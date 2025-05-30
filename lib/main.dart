@@ -30,19 +30,202 @@ class MyApp extends StatelessWidget {
           secondary: Color(0xFFFFFFFF), // Warna sekunder
         ),
       ),
-      // default nama router
-      initialRoute: '/',
+      // default nama router - mulai dengan splash screen
+      initialRoute: '/splash',
 
       // daftar nama router
       routes: <String, WidgetBuilder>{
+        '/splash': (context) => SplashScreen(),
         '/': (context) => MainPage(),
-        // '/splash': (context) => SplashScreen(),
         '/stasiun': (context) => StasiunPage(),
         '/riwayat': (context) => RiwayatPage(),
         '/home': (context) => HomePage(),
         '/profile': (context) => ProfilePage(),
         '/login': (context) => LoginPage(),
         '/register': (context) => RegisterPage(),
+      },
+    );
+  }
+}
+
+// Splash Screen Widget dengan Animasi
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late AnimationController _bellController;
+
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _bellAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize animation controllers
+    _fadeController = AnimationController(
+      duration: Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _scaleController = AnimationController(
+      duration: Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _bellController = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    // Initialize animations
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+
+    _bellAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _bellController, curve: Curves.bounceOut),
+    );
+
+    // Start animations with delays
+    _startAnimations();
+
+    // Navigate after animations complete
+    Future.delayed(Duration(seconds: 3), () {
+      Navigator.pushReplacementNamed(context, '/');
+    });
+  }
+
+  void _startAnimations() async {
+    _fadeController.forward();
+
+    await Future.delayed(Duration(milliseconds: 300));
+    _scaleController.forward();
+
+    await Future.delayed(Duration(milliseconds: 800));
+    _bellController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    _bellController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _fadeAnimation,
+        _scaleAnimation,
+        _bellAnimation,
+      ]),
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Transform.scale(
+              scale: _scaleAnimation.value,
+              child: Opacity(
+                opacity: _fadeAnimation.value,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // GeoBeep Text
+                    Row(
+                      children: [
+                        // "Geo" text with blue color and black outline
+                        Stack(
+                          children: [
+                            // Black outline
+                            Text(
+                              'Geo',
+                              style: TextStyle(
+                                fontSize: 52,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.bold,
+                                foreground:
+                                    Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 4
+                                      ..color = Colors.black,
+                              ),
+                            ),
+                            // Blue fill
+                            Text(
+                              'Geo',
+                              style: TextStyle(
+                                fontSize: 52,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF508AA7),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // "Beep" text with black color and black outline
+                        Stack(
+                          children: [
+                            // Black outline
+                            Text(
+                              'Beep',
+                              style: TextStyle(
+                                fontSize: 52,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.bold,
+                                foreground:
+                                    Paint()
+                                      ..style = PaintingStyle.stroke
+                                      ..strokeWidth = 4
+                                      ..color = Colors.black,
+                              ),
+                            ),
+                            // Black fill
+                            Text(
+                              'Beep',
+                              style: TextStyle(
+                                fontSize: 52,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 20),
+                    // Animated Bell Icon
+                    Transform.scale(
+                      scale: _bellAnimation.value,
+                      child: Transform.rotate(
+                        angle: _bellAnimation.value * 0.2,
+                        child: Iconify(
+                          Mdi.bell,
+                          size: 56,
+                          color: Color(0xFF508AA7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
       },
     );
   }
@@ -93,15 +276,6 @@ class _MainPageState extends State<MainPage> {
   int screen = 0;
 
   @override
-  void initState() {
-    super.initState();
-    // Navigate to the main page after 3 seconds
-    Future.delayed(Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/main');
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: PageStorage(
@@ -114,11 +288,10 @@ class _MainPageState extends State<MainPage> {
           topRight: Radius.circular(10),
         ),
         child: Container(
-          color: Color(0xFF508AA7), 
+          color: Color(0xFF508AA7),
           height: 65,
           child: BottomNavigationBar(
-            backgroundColor:
-                Colors.transparent, 
+            backgroundColor: Colors.transparent,
             type: BottomNavigationBarType.fixed,
             currentIndex: screen,
             selectedItemColor: Theme.of(context).colorScheme.secondary,
