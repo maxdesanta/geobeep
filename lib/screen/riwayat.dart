@@ -8,7 +8,6 @@ class RiwayatPage extends StatefulWidget {
 }
 
 class _RiwayatPageState extends State<RiwayatPage> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,19 +15,16 @@ class _RiwayatPageState extends State<RiwayatPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
           "Riwayat",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.secondary
-          ),
+          style: TextStyle(color: Theme.of(context).colorScheme.secondary),
         ),
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('Ini halaman Riwayat'),
-          ],
+          children: <Widget>[const Text('Ini halaman Riwayat')],
         ),
-      )
+      ),
     );
   }
 }

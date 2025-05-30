@@ -8,7 +8,6 @@ class StasiunPage extends StatefulWidget {
 }
 
 class _StasiunPageState extends State<StasiunPage> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -16,19 +15,16 @@ class _StasiunPageState extends State<StasiunPage> {
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(
           "Stasiun",
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.secondary
-          ),
+          style: TextStyle(color: Theme.of(context).colorScheme.secondary),
         ),
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('Ini halaman stasiun'),
-          ],
+          children: <Widget>[const Text('Ini halaman stasiun')],
         ),
-      )
+      ),
     );
   }
 }

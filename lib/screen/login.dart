@@ -8,18 +8,15 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('Ini halaman Register'),
-          ],
+          children: <Widget>[const Text('Ini halaman Register')],
         ),
-      )
+      ),
     );
   }
 }
