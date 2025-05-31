@@ -103,12 +103,144 @@ class _RiwayatPageState extends State<RiwayatPage> {
           "Riwayat",
           style: TextStyle(color: Theme.of(context).colorScheme.secondary),
         ),
-        automaticallyImplyLeading: false,
       ),
-      body: Center(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[const Text('Ini halaman Riwayat')],
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // Bagian Alarm Aktif dengan scrollable ListView di dalam Container
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.notifications,
+                  size: 42,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Alarm Aktif',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 240, // Atur tinggi container agar ListView scrollable
+              child: ListView.builder(
+                itemCount: alarmAktif.length,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shrinkWrap: true, 
+                itemBuilder: (context, index) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 21,
+                    ),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          alarmAktif[index],
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.secondary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              alarmAktif.removeAt(index);
+                            });
+                          },
+                          child: const Icon(
+                            Icons.clear,
+                            color: Colors.black,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Bagian Riwayat tanpa scroll internal
+            Row(
+              children: <Widget>[
+                const Icon(
+                  Icons.notifications,
+                  size: 42,
+                  color: Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Riwayat',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ListView.builder(
+              physics: const NeverScrollableScrollPhysics(), 
+              shrinkWrap: true, 
+              itemCount: riwayat.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 21,
+                  ),
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        riwayat[index],
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.secondary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showAlarmDetailDialog(riwayat[index]);
+                          });
+                        },
+                        child: Text(
+                          'Aktifkan Kembali'
+                        )
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
