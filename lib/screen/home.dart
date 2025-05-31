@@ -26,41 +26,44 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text('Ini halaman Home'),
-            const SizedBox(height: 20),
             // Kotak biru untuk stasiun
-            GestureDetector(
-              onTap: () => _showStationModal(context),
-              child: Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Color(0xFF508AA7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Sisi kiri - Nama Stasiun
-                    const Text(
-                      'Nama Stasiun',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Color(0xFF508AA7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Sisi kiri - Nama Stasiun
+                  const Text(
+                    'Nama Stasiun',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  // Sisi kanan - Ikon
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          _showStationModal(context);
+                        },
+                        child: Icon(Icons.add_alert, color: Colors.black, size: 24)
                       ),
-                    ),
-                    // Sisi kanan - Ikon
-                    Row(
-                      children: [
-                        Icon(Icons.add_alert, color: Colors.black, size: 24),
-                        const SizedBox(width: 8),
-                        Icon(Icons.delete, color: Colors.black, size: 24),
-                      ],
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {},
+                        child: Icon(Icons.delete, color: Colors.black, size: 24),
+                      )
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
