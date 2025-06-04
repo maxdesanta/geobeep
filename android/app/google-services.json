@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "172842704725",
+    "project_id": "geobeep-59baa",
+    "storage_bucket": "geobeep-59baa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172842704725:android:f2849e25153d203987d9dc",
+        "android_client_info": {
+          "package_name": "com.example.gobeap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "172842704725-5288m56pdfliqs56poun9036af5oubb9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD177IbC4Hdi_jj8SVmKTrccIsoel_ds3k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "172842704725-5288m56pdfliqs56poun9036af5oubb9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

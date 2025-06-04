@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
@@ -11,6 +14,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   File? _profileImage;
+  String? _profileImageUrl;
   final ImagePicker _picker = ImagePicker();
 
   // Controllers for form fields
@@ -18,6 +22,92 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  // proses loaduser
+  Future<void> _loadUser() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    DocumentSnapshot doc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+    if (doc.exists) {
+      Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+      if (data != null) {
+        _nameController.text = data['username'] ?? '';
+        _phoneController.text = data['nomor_telepon'] ?? '';
+        _emailController.text = data['email'] ?? '';
+
+        final imageUrl = data['image_url'];
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          // Anda bisa gunakan CachedNetworkImage atau hanya NetworkImage untuk menampilkan
+          setState(() {
+            _profileImage = null; // supaya tidak menimpa pilihan file lokal
+            // Untuk menampilkan dari url, Anda perlu ubah widget CircleAvatar nantinya
+          });
+        }
+      }
+    }
+  }
+
+  // proses update data
+  Future<void> _uploadAndSaveProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw "User belum login";
+      }
+
+      String? uploadedImageUrl = _profileImageUrl;
+
+      // Upload gambar jika ada file gambar lokal baru yang dipilih
+      if (_profileImage != null) {
+        final ref = FirebaseStorage.instance.ref().child('user_profile_images').child('${user.uid}.jpg');
+
+        // Upload file gambar ke Firebase Storage
+        await ref.putFile(_profileImage!);
+
+        // Dapatkan URL gambar yang sudah diupload
+        uploadedImageUrl = await ref.getDownloadURL();
+      }
+
+      // Update data pengguna di Firestore dengan data terbaru
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'username': _nameController.text.trim(),
+        'nomor_telepon': _phoneController.text.trim(),
+        'email': _emailController.text.trim(),
+        'image_url': uploadedImageUrl ?? '',
+      });
+
+      setState(() {
+        _profileImageUrl = uploadedImageUrl;
+        _profileImage = null; // reset gambar lokal setelah upload
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Profil berhasil diperbarui')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan profil: $e')));
+    }
+  }
+
+  // fungsi log out
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushReplacementNamed(context, '/login');
+  }
+  
+  // fungsi pick gambar
   Future<void> _pickImage() async {
     showModalBottomSheet(
       context: context,
@@ -67,10 +157,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    super.dispose();
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
-    super.dispose();
   }
 
   @override
@@ -279,11 +369,8 @@ class _ProfilePageState extends State<ProfilePage> {
               child: ElevatedButton(
                 onPressed: () {
                   // Handle edit profile action
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Profile updated successfully!'),
-                    ),
-                  );
+                  // _updateData();
+                  _uploadAndSaveProfile();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF135E71),
@@ -332,13 +419,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                           TextButton(
                             onPressed: () {
-                              Navigator.pop(context);
-                              // Add your logout logic here
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Logged out successfully!'),
-                                ),
-                              );
+                              _logout();
                             },
                             child: const Text('Logout'),
                           ),
@@ -361,45 +442,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Cek Login Dulu Button
-            Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.4),
-                    spreadRadius: 1,
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  // Navigate to login.dart
-                  Navigator.pushNamed(context, '/login');
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E8B57),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'CEK LOGIN DULU',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
+            )
           ],
         ),
       ),

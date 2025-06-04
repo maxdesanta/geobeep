@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:iconify_flutter/iconify_flutter.dart';
 import 'package:iconify_flutter/icons/mdi.dart';
 // Uncomment these imports when you add Firebase
-// import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 // import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends StatefulWidget {
@@ -48,18 +49,23 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Simulate login delay
       await Future.delayed(const Duration(seconds: 1));
-      
+
       // Replace this with actual Firebase authentication
-      /*
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
       );
-      */
+
+      // pesan berhasil
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login successful!'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
       // Navigate to home on success
       Navigator.pushReplacementNamed(context, '/');
-      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -83,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Simulate Google sign in delay
       await Future.delayed(const Duration(seconds: 1));
-      
+
       // Replace this with actual Google Sign In
       /*
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
@@ -107,7 +113,6 @@ class _LoginPageState extends State<LoginPage> {
 
       // Navigate to home on success
       Navigator.pushReplacementNamed(context, '/');
-      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -121,6 +126,7 @@ class _LoginPageState extends State<LoginPage> {
       });
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,7 +183,10 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30.0,
+                  vertical: 40.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -342,16 +351,19 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           elevation: 0,
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'LOGIN',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: "Inter",
-                                  fontWeight: FontWeight.w600,
+                        child:
+                            _isLoading
+                                ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                                : const Text(
+                                  'LOGIN',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontFamily: "Inter",
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
                       ),
                     ),
 
@@ -371,9 +383,12 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : () {
-                          Navigator.pushNamed(context, '/register');
-                        },
+                        onPressed:
+                            _isLoading
+                                ? null
+                                : () {
+                                  Navigator.pushNamed(context, '/register');
+                                },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF508AA7),
                           foregroundColor: Colors.white,
@@ -401,7 +416,9 @@ class _LoginPageState extends State<LoginPage> {
                       child: Text(
                         'or connect with',
                         style: TextStyle(
-                          color: Colors.black87, // Changed from Colors.grey to darker
+                          color:
+                              Colors
+                                  .black87, // Changed from Colors.grey to darker
                           fontFamily: "Inter",
                           fontWeight: FontWeight.w500, // Made slightly bolder
                           fontSize: 14,
@@ -427,7 +444,8 @@ class _LoginPageState extends State<LoginPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _handleGoogleSignIn,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white, // Pure white background
+                          backgroundColor:
+                              Colors.white, // Pure white background
                           foregroundColor: Colors.black87, // Darker text
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -439,38 +457,43 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           elevation: 0,
                         ),
-                        child: _isLoading
-                            ? const CircularProgressIndicator()
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  // Google icon with correct colors
-                                  Container(
-                                    width: 20,
-                                    height: 20,
-                                    child: Image.network(
-                                      'https://developers.google.com/identity/images/g-logo.png',
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return const Iconify(
-                                          Mdi.google,
-                                          size: 20,
-                                          color: Colors.red,
-                                        );
-                                      },
+                        child:
+                            _isLoading
+                                ? const CircularProgressIndicator()
+                                : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Google icon with correct colors
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      child: Image.network(
+                                        'https://developers.google.com/identity/images/g-logo.png',
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          return const Iconify(
+                                            Mdi.google,
+                                            size: 20,
+                                            color: Colors.red,
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text(
-                                    'GOOGLE',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontFamily: "Inter",
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87, // Dark text
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'GOOGLE',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontFamily: "Inter",
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87, // Dark text
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
                       ),
                     ),
 

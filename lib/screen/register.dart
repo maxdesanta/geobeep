@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -11,10 +13,38 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
-  
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
+
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+
+  // PROSES registrasi
+  Future<void> _register() async {
+    try{
+      UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Tambahkan data pengguna ke Firestore
+      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+        'username': _usernameController.text,
+        'email': _emailController.text,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Tampilkan pesan sukses
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registration successful!')));
+
+      // Navigasi ke halaman login
+      Navigator.pushReplacementNamed(context, '/login');
+    } on FirebaseAuthException catch (e) {
+      print(e.code);
+    } catch (e) {
+      print(e);
+    }
+  }
 
   @override
   void dispose() {
@@ -61,7 +91,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 40), // Add some space from the bottom
+                    const SizedBox(
+                      height: 40,
+                    ), // Add some space from the bottom
                   ],
                 ),
               ),
@@ -78,7 +110,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30.0,
+                  vertical: 40.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -305,7 +340,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             onPressed: () {
                               setState(() {
-                                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                                _isConfirmPasswordVisible =
+                                    !_isConfirmPasswordVisible;
                               });
                             },
                           ),
@@ -335,13 +371,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               _emailController.text.isNotEmpty &&
                               _passwordController.text.isNotEmpty &&
                               _confirmPasswordController.text.isNotEmpty) {
-                            if (_passwordController.text == _confirmPasswordController.text) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Registration successful!'),
-                                ),
-                              );
-                              Navigator.pushReplacementNamed(context, '/login');
+                            if (_passwordController.text ==
+                                _confirmPasswordController.text) {
+                                _register();
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
