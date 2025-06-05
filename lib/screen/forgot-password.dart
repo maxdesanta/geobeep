@@ -31,8 +31,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       }
 
       // password reset process with firebase
-      FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text);
-    } catch(e) {
+      FirebaseAuth.instance.sendPasswordResetEmail(
+        email: _emailController.text,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset email sent!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pushNamed(context, '/login');
+    } catch (e) {
       print("Error: $e");
     }
   }
@@ -82,7 +93,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30.0,
+                  vertical: 40.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
