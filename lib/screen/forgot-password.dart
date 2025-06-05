@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -17,19 +18,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   // Handle forgot password request
-  void _handleForgotPassword() {
-    if (_emailController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter your email address'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+  void _handleForgotPassword() async {
+    try {
+      if (_emailController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter your email address'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-    // Navigate to reset password page
-    Navigator.pushNamed(context, '/reset-password');
+      // password reset process with firebase
+      FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text);
+    } catch(e) {
+      print("Error: $e");
+    }
   }
 
   @override

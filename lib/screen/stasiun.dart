@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gobeap/screen/map.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StasiunPage extends StatefulWidget {
   const StasiunPage({super.key});
@@ -10,7 +11,10 @@ class StasiunPage extends StatefulWidget {
 }
 
 class _StasiunPageState extends State<StasiunPage> {
-  bool isLoggedIn = false; // status login user
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool get isLoggedIn => _auth.currentUser != null;
+
   Map<String, bool> isFavorite = {};
   List<String> selectedStasiun = [];
 
@@ -60,6 +64,25 @@ class _StasiunPageState extends State<StasiunPage> {
     );
   }
 
+    void onFavoritePressed(String idStasiun) {
+    if (!isLoggedIn) {
+      _showLoginDialog();
+      return;
+    }
+
+    setState(() {
+      if (isFavorite.containsKey(idStasiun)) {
+        isFavorite[idStasiun] = !isFavorite[idStasiun]!;
+      } else {
+        isFavorite[idStasiun] = true;
+      }
+    });
+
+    // Tambahkan logika simpan favorite ke Firestore atau local storage di sini jika perlu
+    // Contoh sederhana:
+    // _firestore.collection('users').doc(_auth.currentUser!.uid).collection('favorites').doc(idStasiun).set({'favorited': true});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -104,9 +127,9 @@ class _StasiunPageState extends State<StasiunPage> {
                     var dataStasiun = doc.data()! as Map<String, dynamic>;
                     String idStasiun = doc.id;
                     String namaStasiun = dataStasiun["nama_stasiun"];
+                    final favoriteStatus = isFavorite[idStasiun] ?? false;
 
                     bool sudahDipilih = selectedStasiun.contains(namaStasiun);
-                    bool favorit = isFavorite[idStasiun]!;
 
                     return Container(
                       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -139,7 +162,7 @@ class _StasiunPageState extends State<StasiunPage> {
                                   });
                                 },
                                 child: Icon(
-                                  favorit ? Icons.star : Icons.star_border,
+                                  favoriteStatus ? Icons.star : Icons.star_border,
                                   color: Colors.black,
                                 ),
                               ),

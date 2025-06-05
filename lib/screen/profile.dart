@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
@@ -58,7 +59,24 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   // proses update data
-  Future<void> _uploadAndSaveProfile() async {
+/*************  ✨ Windsurf Command ⭐  *************/
+  /// Simpan perubahan data pengguna ke Firestore dan upload gambar jika perlu.
+  ///
+  /// Jika [_profileImage] tidak null, maka akan diupload ke Firebase Storage
+  /// dan URL-nya disimpan di Firestore.
+  ///
+  /// Jika [_profileImage] null dan [_profileImageUrl] tidak null, maka
+  /// [_profileImageUrl] akan disimpan di Firestore.
+  ///
+  /// Jika [_profileImage] null dan [_profileImageUrl] null, maka hanya
+  /// data teks yang akan disimpan di Firestore.
+  ///
+  /// Jika terjadi kesalahan, maka akan menampilkan SnackBar dengan pesan
+  /// error yang sesuai.
+  ///
+  /// Jika berhasil, maka akan menampilkan SnackBar dengan pesan "Profil
+  /// berhasil diperbarui".
+/*******  bcae7e10-c6e5-4fa8-b01d-cc4b34d04119  *******/  Future<void> _uploadAndSaveProfile() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -103,7 +121,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // fungsi log out
   Future<void> _logout() async {
+    // log out biasa
     await FirebaseAuth.instance.signOut();
+
+    // log out google
+    await GoogleSignIn().signOut();
+
     Navigator.pushReplacementNamed(context, '/login');
   }
   

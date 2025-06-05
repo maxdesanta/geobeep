@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iconify_flutter/iconify_flutter.dart';
 import 'package:iconify_flutter/icons/mdi.dart';
+
 // Uncomment these imports when you add Firebase
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:google_sign_in/google_sign_in.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,10 +19,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-
-  // Firebase Auth instance (uncomment when Firebase is added)
-  // final FirebaseAuth _auth = FirebaseAuth.instance;
-  // final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   @override
   void dispose() {
@@ -80,52 +77,36 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Google Sign In with Firebase (currently simulated)
-  Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isLoading = true;
-    });
+  // login denganb google
+  Future<void> signInWithGoogle() async {
+  final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+  final GoogleSignInAuthentication googleAuth = await googleUser!.authentication;
 
-    try {
-      // Simulate Google sign in delay
-      await Future.delayed(const Duration(seconds: 1));
+  final credential = GoogleAuthProvider.credential(
+    accessToken: googleAuth.accessToken,
+    idToken: googleAuth.idToken,
+  );
 
-      // Replace this with actual Google Sign In
-      /*
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return;
+  UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+  final user = userCredential.user;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-      */
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Google Sign In successful!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Navigate to home on success
-      Navigator.pushReplacementNamed(context, '/');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign In failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isLoading = false;
+  if (user != null) {
+    // Simpan data user ke Firestore jika baru login pertama kali
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final docSnapshot = await userDoc.get();
+    if (!docSnapshot.exists) {
+      await userDoc.set({
+        'username': user.displayName ?? '',
+        'email': user.email ?? '',
+        'photo_url': user.photoURL ?? '',
+        'created_at': user.metadata.creationTime?.toIso8601String() ?? '',
       });
     }
   }
+
+  Navigator.pushReplacementNamed(context, '/');
+}
 
   @override
   Widget build(BuildContext context) {
@@ -442,7 +423,7 @@ class _LoginPageState extends State<LoginPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                        onPressed: _isLoading ? null : signInWithGoogle,
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               Colors.white, // Pure white background

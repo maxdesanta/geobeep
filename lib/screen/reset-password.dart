@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -21,37 +22,44 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   }
 
   // Handle reset password
-  void _handleResetPassword() {
-    if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
+  void _handleResetPassword() async {
+    try {
+      if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fill all fields'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Passwords do not match'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Update password in Firebase
+      await FirebaseAuth.instance.currentUser!.updatePassword(_passwordController.text);
+
+      // Show success message and navigate to login
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill all fields'),
-          backgroundColor: Colors.red,
+          content: Text('Password reset successful!'),
+          backgroundColor: Colors.green,
         ),
       );
-      return;
+
+      // Navigate back to login page
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      print("Error: $e");
     }
-
-    if (_passwordController.text != _confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Show success message and navigate to login
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password reset successful!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // Navigate back to login page
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
   }
 
   @override
