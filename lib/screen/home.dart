@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:gobeap/models/station_model.dart';
+import 'package:gobeap/providers/station_provider.dart';
+import 'package:gobeap/screen/map.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,57 +26,246 @@ class _HomePageState extends State<HomePage> {
         ),
         automaticallyImplyLeading: false,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            // Kotak biru untuk stasiun
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Color(0xFF508AA7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Sisi kiri - Nama Stasiun
-                  const Text(
-                    'Nama Stasiun',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
+      body: Consumer<StationProvider>(
+        builder: (context, stationProvider, child) {
+          final favoriteStations = stationProvider.favoriteStations;
+
+          return favoriteStations.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.star_border, size: 80, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text(
+                      'Belum ada stasiun favorit',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
-                  ),
-                  // Sisi kanan - Ikon
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          _showStationModal(context);
-                        },
-                        child: Icon(Icons.add_alert, color: Colors.black, size: 24)
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {},
-                        child: Icon(Icons.delete, color: Colors.black, size: 24),
-                      )
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Tambahkan stasiun favorit di halaman Stasiun',
+                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+              : ListView.builder(
+                padding: EdgeInsets.all(16),
+                itemCount: favoriteStations.length,
+                itemBuilder: (context, index) {
+                  final station = favoriteStations[index];
+
+                  return _buildStationCard(context, station, stationProvider);
+                },
+              );
+        },
       ),
     );
   }
 
-  void _showStationModal(BuildContext context) {
+  Widget _buildStationCard(
+    BuildContext context,
+    StationModel station,
+    StationProvider provider,
+  ) {
+    // Format distance if available
+    String distanceText = "";
+    if (provider.stationDistances.containsKey(station.id)) {
+      final distance = provider.stationDistances[station.id]!;
+      distanceText =
+          distance < 1000
+              ? "${distance.toStringAsFixed(0)} m"
+              : "${(distance / 1000).toStringAsFixed(2)} km";
+    }
+
+    // Determine if alarm is active
+    final isAlarmActive = station.isAlarmActive;
+
+    // Format radius text if alarm is active
+    String radiusText = "";
+    if (isAlarmActive) {
+      radiusText = "(${station.radiusInMeters}m)";
+    }
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color(0xFF508AA7),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+        // Add subtle border if alarm is active
+        border:
+            isAlarmActive ? Border.all(color: Colors.yellow, width: 2) : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Station name
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            station.name,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Show alarm badge if active
+                        if (isAlarmActive)
+                          Container(
+                            margin: EdgeInsets.only(left: 8),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.yellow,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.notifications_active,
+                                  color: Colors.black,
+                                  size: 12,
+                                ),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Aktif $radiusText',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (station.line != null && station.line!.isNotEmpty)
+                      Text(
+                        station.line!,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Add spacing
+          SizedBox(height: 12),
+
+          // Bottom row with distance and buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Show distance if available
+              if (distanceText.isNotEmpty)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    distanceText,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+              // Spacer
+              Spacer(),
+
+              // Action buttons
+              Row(
+                children: [
+                  // Toggle alarm button with different icon based on active state
+                  GestureDetector(
+                    onTap: () => _showStationModal(context, station),
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color:
+                            isAlarmActive
+                                ? Colors.yellow
+                                : Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isAlarmActive
+                            ? Icons.notifications_active
+                            : Icons.add_alert,
+                        color: isAlarmActive ? Colors.black : Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  // Remove from favorites
+                  GestureDetector(
+                    onTap: () {
+                      provider.toggleFavorite(station);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${station.name} dihapus dari favorit'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(Icons.star, color: Colors.yellow, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStationModal(BuildContext context, StationModel station) {
+    // Default radius value
+    selectedRadius = '100';
+
+    // Use the current alarm radius if active
+    final provider = Provider.of<StationProvider>(context, listen: false);
+    if (station.isAlarmActive && station.radiusInMeters > 0) {
+      selectedRadius = station.radiusInMeters.toString();
+    }
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -90,8 +283,8 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 1. Stasiun Tujuan
-                    const Text(
-                      'Stasiun Tujuan : Manggarai',
+                    Text(
+                      'Stasiun Tujuan: ${station.name}',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -102,7 +295,7 @@ class _HomePageState extends State<HomePage> {
 
                     // 2. Pilih Radius
                     const Text(
-                      'Pilih Radius (dalam KM)',
+                      'Pilih Radius (dalam meter)',
                       style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
                     const SizedBox(height: 8),
@@ -113,6 +306,7 @@ class _HomePageState extends State<HomePage> {
                       onChanged: (value) {
                         selectedRadius = value;
                       },
+                      controller: TextEditingController(text: selectedRadius),
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
@@ -120,7 +314,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(8),
                           borderSide: BorderSide.none,
                         ),
-                        hintText: 'Masukkan radius dalam KM',
+                        hintText: 'Masukkan radius dalam meter',
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
@@ -196,18 +390,48 @@ class _HomePageState extends State<HomePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // 6. Button Simpan dan Batalkan
+                    // 6. Button row with more options
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              // Logika simpan di sini
+                              // Get radius value
+                              int radius = 100;
+                              try {
+                                radius = int.parse(selectedRadius);
+                                if (radius <= 0) radius = 100;
+                              } catch (e) {
+                                // Use default radius
+                              }
+
+                              // Set up the alarm
+                              provider.addStationAlarm(station, radius);
+
+                              // Close dialog
                               Navigator.of(context).pop();
+
+                              // Show success message
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Pengaturan berhasil disimpan!',
+                                    'Alarm untuk ${station.name} telah diaktifkan (${radius}m)',
+                                  ),
+                                  duration: Duration(seconds: 3),
+                                  action: SnackBarAction(
+                                    label: 'Lihat di Peta',
+                                    onPressed: () {
+                                      // Optional: Navigate to map if user wants to see it
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => MapPage(
+                                                selectedStations: [station],
+                                              ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                               );
@@ -220,7 +444,7 @@ class _HomePageState extends State<HomePage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            child: const Text('Simpan'),
+                            child: const Text('Aktifkan Alarm'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -241,6 +465,48 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ],
+                    ),
+
+                    // Add Map button
+                    const SizedBox(height: 12),
+                    InkWell(
+                      onTap: () {
+                        // Close the dialog
+                        Navigator.of(context).pop();
+
+                        // Navigate to map
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) =>
+                                    MapPage(selectedStations: [station]),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.map, color: Colors.white, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Lihat di Peta',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

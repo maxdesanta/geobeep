@@ -1,0 +1,616 @@
+Komponen Utama untuk Sistem Alarm GPS GeoBeep
+Berikut adalah kode-kode utama dan fungsi kunci yang dibutuhkan untuk implementasi fitur alarm GPS:
+
+1. LocationService - Menangani pemantauan lokasi real-time
+class LocationService {
+  // Singleton pattern
+  static final LocationService _instance = LocationService._internal();
+  factory LocationService() => _instance;
+  LocationService._internal();
+
+  // Stream untuk pembaruan lokasi
+  final StreamController<Position> _locationController = StreamController<Position>.broadcast();
+  Stream<Position> get locationStream => _locationController.stream;
+  
+  bool _isRunning = false;
+  StreamSubscription<Position>? _positionSubscription;
+
+  // Meminta izin lokasi
+  Future<bool> requestLocationPermission() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+    
+    if (permission == LocationPermission.deniedForever) return false;
+    return true;
+  }
+
+  // Mulai tracking lokasi
+  Future<bool> startLocationTracking() async {
+    if (_isRunning) return true;
+    
+    final permissionGranted = await requestLocationPermission();
+    if (!permissionGranted) return false;
+    
+    try {
+      _positionSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
+      ).listen((Position position) {
+        _locationController.add(position);
+      });
+      
+      _isRunning = true;
+      return true;
+    } catch (e) {
+      print('Error starting location tracking: $e');
+      return false;
+    }
+  }
+
+  // Hentikan tracking lokasi
+  Future<void> stopLocationTracking() async {
+    await _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _isRunning = false;
+  }
+
+  void dispose() {
+    stopLocationTracking();
+    _locationController.close();
+  }
+}
+2. AlarmService - Menangani bunyi dan notifikasi alarm
+class AlarmService {
+  static final AlarmService _instance = AlarmService._internal();
+  factory AlarmService() => _instance;
+  AlarmService._internal();
+  
+  static AlarmService get instance => _instance;
+  
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlaying = false;
+
+  Future<void> playAlarm() async {
+    if (_isPlaying) return;
+    
+    try {
+      _isPlaying = true;
+      
+      // Vibrate phone
+      HapticFeedback.vibrate();
+      
+      // Play alarm sound
+      await _audioPlayer.play(AssetSource('sounds/alarm.mp3'));
+      
+      // Tambahan vibrasi
+      for (int i = 0; i < 3; i++) {
+        HapticFeedback.vibrate();
+        await Future.delayed(Duration(milliseconds: 500));
+      }
+    } catch (e) {
+      print('Error playing alarm: $e');
+      // Fallback ke vibrasi saja
+      for (int i = 0; i < 5; i++) {
+        HapticFeedback.vibrate();
+        await Future.delayed(Duration(milliseconds: 300));
+      }
+    } finally {
+      Future.delayed(Duration(seconds: 3), () {
+        _isPlaying = false;
+      });
+    }
+  }
+
+  Future<void> stopAlarm() async {
+    await _audioPlayer.stop();
+    _isPlaying = false;
+  }
+
+  void dispose() {
+    _audioPlayer.dispose();
+  }
+}
+3. NotificationService - Menampilkan notifikasi
+class NotificationService {
+  static NotificationService? _instance;
+  static NotificationService get instance => _instance ??= NotificationService._();
+  NotificationService._();
+
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  bool _isInitialized = false;
+
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    try {
+      const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+      
+      await _flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (payload) {
+          print('Notification tapped: ${payload.payload}');
+        },
+      );
+      
+      _isInitialized = true;
+    } catch (e) {
+      print('Failed to initialize NotificationService: $e');
+      _isInitialized = true;
+    }
+  }
+
+  Future<void> showAlarmNotification(String title, String body) async {
+    await initialize();
+    
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'alarm_channel',
+        'Station Alarms',
+        channelDescription: 'Notifications for station proximity alarms',
+        importance: Importance.high,
+        priority: Priority.high,
+        enableVibration: true,
+        playSound: true,
+        vibrationPattern: [0, 1000, 500, 1000],
+      );
+      
+      const notificationDetails = NotificationDetails(android: androidDetails);
+      
+      await _flutterLocalNotificationsPlugin.show(
+        DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title,
+        body,
+        notificationDetails,
+      );
+    } catch (e) {
+      print('Error showing notification: $e');
+      HapticFeedback.vibrate();
+    }
+  }
+}
+4. StationProvider - Core logic untuk monitoring stasiun
+
+class StationProvider extends ChangeNotifier {
+  List<StationModel> _allStations = [];
+  List<StationModel> _favoriteStations = [];
+  Map<String, double> _stationDistances = {};
+  bool _isLoading = false;
+  bool _isMonitoring = false;
+  Position? _currentPosition;
+  StreamSubscription<Position>? _locationSubscription;
+  
+  // Getter yang diperlukan
+  List<StationModel> get allStations => _allStations;
+  List<StationModel> get favoriteStations => _favoriteStations;
+  Map<String, double> get stationDistances => _stationDistances;
+  bool get isLoading => _isLoading;
+  bool get isMonitoring => _isMonitoring;
+  Position? get currentPosition => _currentPosition;
+  List<StationModel> get activeAlarms => _allStations.where((s) => s.isAlarmActive).toList();
+  
+  // Inisialisasi provider dan load data
+  Future<void> initialize() async {
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      _allStations = StationsData.getAllStations();
+      _loadSavedStationSettings();
+      _updateDistances();
+    } catch (e) {
+      print('Error initializing station provider: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+  
+  // Mulai monitoring lokasi
+  Future<bool> startMonitoring() async {
+    if (_isMonitoring) return true;
+    
+    final locationService = LocationService();
+    final started = await locationService.startLocationTracking();
+    
+    if (!started) {
+      print('Failed to start location tracking');
+      return false;
+    }
+    
+    // Listen lokasi
+    _locationSubscription = locationService.locationStream.listen(
+      (position) {
+        _currentPosition = position;
+        _updateDistances();
+        _checkAlarms(position);
+        notifyListeners();
+      },
+      onError: (error) {
+        print('Error in location stream: $error');
+      },
+    );
+    
+    _isMonitoring = true;
+    notifyListeners();
+    return true;
+  }
+  
+  // Stop monitoring
+  Future<void> stopMonitoring() async {
+    await _locationSubscription?.cancel();
+    _locationSubscription = null;
+    _isMonitoring = false;
+    notifyListeners();
+  }
+  
+  // Update jarak ke stasiun
+  void _updateDistances() {
+    if (_currentPosition == null) return;
+    
+    for (var station in _allStations) {
+      final distance = Geolocator.distanceBetween(
+        _currentPosition!.latitude, 
+        _currentPosition!.longitude,
+        station.latitude, 
+        station.longitude
+      );
+      _stationDistances[station.id] = distance;
+    }
+    notifyListeners();
+  }
+  
+  // Cek alarm
+  void _checkAlarms(Position position) {
+    for (var station in _allStations) {
+      if (!station.isAlarmActive) continue;
+      
+      final distance = _stationDistances[station.id] ?? double.infinity;
+      
+      // Jika jarak <= radius, trigger alarm
+      if (distance <= station.radiusInMeters) {
+        _triggerAlarm(station, distance);
+      }
+    }
+  }
+  
+  // Trigger alarm
+  Future<void> _triggerAlarm(StationModel station, double distance) async {
+    // Simpan ke history
+    final alarmHistory = AlarmHistory(
+      stationId: station.id,
+      stationName: station.name,
+      latitude: _currentPosition!.latitude,
+      longitude: _currentPosition!.longitude,
+      triggeredAt: DateTime.now(),
+    );
+    
+    // Simpan ke storage
+    await StorageService.instance.saveAlarmHistory(alarmHistory.toMap());
+    
+    // Tampilkan notifikasi
+    await NotificationService.instance.showAlarmNotification(
+      'GeoBeep Alarm!',
+      'Anda telah tiba di ${station.name}!',
+    );
+    
+    // Putar suara alarm
+    await AlarmService.instance.playAlarm();
+  }
+  
+  // Tambah alarm
+  Future<bool> addStationAlarm(StationModel station, int radius) async {
+    try {
+      final index = _allStations.indexWhere((s) => s.id == station.id);
+      if (index == -1) return false;
+      
+      _allStations[index] = _allStations[index].copyWith(
+        isAlarmActive: true,
+        radiusInMeters: radius,
+      );
+      
+      await _saveStationSettings();
+      
+      // Start monitoring jika belum aktif
+      if (!_isMonitoring) {
+        await startMonitoring();
+      }
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error adding station alarm: $e');
+      return false;
+    }
+  }
+  
+  // Update radius
+  Future<bool> updateStationRadius(String stationId, int radius) async {
+    try {
+      final index = _allStations.indexWhere((s) => s.id == stationId);
+      if (index == -1) return false;
+      
+      _allStations[index] = _allStations[index].copyWith(
+        radiusInMeters: radius,
+      );
+      
+      await _saveStationSettings();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error updating station radius: $e');
+      return false;
+    }
+  }
+  
+  // Hapus alarm
+  Future<bool> removeStationAlarm(String stationId) async {
+    try {
+      final index = _allStations.indexWhere((s) => s.id == stationId);
+      if (index == -1) return false;
+      
+      _allStations[index] = _allStations[index].copyWith(
+        isAlarmActive: false,
+      );
+      
+      await _saveStationSettings();
+      
+      // Stop monitoring jika tidak ada alarm aktif
+      if (activeAlarms.isEmpty) {
+        await stopMonitoring();
+      }
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error removing station alarm: $e');
+      return false;
+    }
+  }
+  
+  // Toggle favorite
+  Future<void> toggleFavorite(StationModel station) async {
+    try {
+      final index = _allStations.indexWhere((s) => s.id == station.id);
+      if (index == -1) return;
+      
+      _allStations[index] = _allStations[index].copyWith(
+        isFavorite: !_allStations[index].isFavorite,
+      );
+      
+      _favoriteStations = _allStations.where((s) => s.isFavorite).toList();
+      
+      await _saveStationSettings();
+      notifyListeners();
+    } catch (e) {
+      print('Error toggling favorite: $e');
+    }
+  }
+  
+  // Check if station has active alarm
+  bool hasActiveAlarm(String stationId) {
+    final station = _allStations.firstWhere(
+      (s) => s.id == stationId,
+      orElse: () => StationModel(
+        id: '',
+        name: '',
+        line: '',
+        latitude: 0,
+        longitude: 0,
+      ),
+    );
+    return station.isAlarmActive;
+  }
+  
+  // Save/load stasiun settings
+  Future<void> _saveStationSettings() async {
+    final List<Map<String, dynamic>> settings = _allStations
+        .map((s) => {
+              'id': s.id,
+              'isAlarmActive': s.isAlarmActive,
+              'radiusInMeters': s.radiusInMeters,
+              'isFavorite': s.isFavorite,
+            })
+        .toList();
+    
+    await StorageService.instance.saveAlarmSettings(settings);
+  }
+  
+  Future<void> _loadSavedStationSettings() async {
+    try {
+      final savedSettings = await StorageService.instance.loadAlarmSettings();
+      
+      for (var setting in savedSettings) {
+        final stationId = setting['id'];
+        final index = _allStations.indexWhere((s) => s.id == stationId);
+        
+        if (index != -1) {
+          _allStations[index] = _allStations[index].copyWith(
+            isAlarmActive: setting['isAlarmActive'] ?? false,
+            radiusInMeters: setting['radiusInMeters'] ?? 100,
+            isFavorite: setting['isFavorite'] ?? false,
+          );
+        }
+      }
+      
+      _favoriteStations = _allStations.where((s) => s.isFavorite).toList();
+    } catch (e) {
+      print('Error loading station settings: $e');
+    }
+  }
+  
+  @override
+  void dispose() {
+    stopMonitoring();
+    super.dispose();
+  }
+}
+5. Model Penting
+StationModel
+class StationModel {
+  final String id;
+  final String name;
+  final String line;
+  final double latitude;
+  final double longitude;
+  final bool isAlarmActive;
+  final int radiusInMeters;
+  final bool isFavorite;
+
+  StationModel({
+    required this.id,
+    required this.name,
+    required this.line,
+    required this.latitude,
+    required this.longitude,
+    this.isAlarmActive = false,
+    this.radiusInMeters = 100,
+    this.isFavorite = false,
+  });
+
+  StationModel copyWith({
+    String? id,
+    String? name,
+    String? line,
+    double? latitude,
+    double? longitude,
+    bool? isAlarmActive,
+    int? radiusInMeters,
+    bool? isFavorite,
+  }) {
+    return StationModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      line: line ?? this.line,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isAlarmActive: isAlarmActive ?? this.isAlarmActive,
+      radiusInMeters: radiusInMeters ?? this.radiusInMeters,
+      isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
+}
+AlarmHistory
+
+class AlarmHistory {
+  final String stationId;
+  final String stationName;
+  final double latitude;
+  final double longitude;
+  final DateTime triggeredAt;
+
+  AlarmHistory({
+    required this.stationId,
+    required this.stationName,
+    required this.latitude,
+    required this.longitude,
+    required this.triggeredAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'stationId': stationId,
+      'stationName': stationName,
+      'latitude': latitude,
+      'longitude': longitude,
+      'triggeredAt': triggeredAt.toIso8601String(),
+    };
+  }
+
+  factory AlarmHistory.fromMap(Map<String, dynamic> map) {
+    return AlarmHistory(
+      stationId: map['stationId'] ?? '',
+      stationName: map['stationName'] ?? '',
+      latitude: (map['latitude'] ?? 0.0).toDouble(),
+      longitude: (map['longitude'] ?? 0.0).toDouble(),
+      triggeredAt: DateTime.parse(map['triggeredAt'] ?? DateTime.now().toIso8601String()),
+    );
+  }
+}
+6. Inisialisasi Utama di main.dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notification service
+  await NotificationService.instance.initialize();
+
+  // Initialize location service
+  final locationService = LocationService();
+  await locationService.requestLocationPermission();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) {
+            final provider = StationProvider();
+            // Auto-start monitoring if there are active alarms
+            provider.initialize().then((_) {
+              if (provider.activeAlarms.isNotEmpty) {
+                provider.startMonitoring();
+              }
+            });
+            return provider;
+          },
+        ),
+      ],
+      child: MaterialApp(
+        title: 'GeoBeep',
+        home: SplashScreen(),
+        routes: {
+          '/stasiun': (context) => StasiunPage(),
+        },
+      ),
+    ),
+  );
+}
+7. File pubspec.yaml Dependencies
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Peta
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Lokasi
+  geolocator: ^14.0.1
+
+  # Notifications & Audio
+  flutter_local_notifications: ^17.2.3
+  audioplayers: ^6.4.0
+  
+  # State management
+  provider: ^6.1.5
+  
+  # Storage
+  shared_preferences: ^2.5.3
+  
+  # Permissions
+  permission_handler: ^12.0.0+1
+8. AndroidManifest.xml Permissions
+
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+<uses-permission android:name="android.permission.VIBRATE" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+
+
+Semua kode di atas bisa Anda gunakan sebagai referensi untuk mengimplementasikan fungsionalitas alarm GPS ke dalam UI UX. Kode-kode ini mencakup seluruh logika inti yang diperlukan untuk deteksi lokasi, pemantauan stasiun, dan pemicu alarm.
+

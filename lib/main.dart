@@ -7,14 +7,42 @@ import 'package:gobeap/screen/riwayat.dart';
 import 'package:gobeap/screen/forgot-password.dart';
 import 'package:gobeap/screen/reset-password.dart';
 import 'package:gobeap/screen/stasiun.dart';
+import 'package:provider/provider.dart';
+import 'package:gobeap/providers/station_provider.dart';
+import 'package:gobeap/services/notification_service.dart';
+import 'package:gobeap/services/location_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 // import icon
 import 'package:iconify_flutter/iconify_flutter.dart';
 import 'package:iconify_flutter/icons/mdi.dart';
 import 'package:iconify_flutter/icons/heroicons.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize services
+  await NotificationService.instance.initialize();
+  // await AlarmService.instance.initialize();
+
+  // Pre-initialize the StationProvider
+  final stationProvider = StationProvider();
+  await stationProvider.initialize();
+
+  // Start monitoring immediately when app starts
+  // This will activate background location tracking
+  await stationProvider.startMonitoring();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<StationProvider>.value(value: stationProvider),
+        // Provider.value(value: AlarmService.instance),
+        // Other providers...
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -47,7 +75,6 @@ class MyApp extends StatelessWidget {
         '/register': (context) => RegisterPage(),
         '/forgot-password': (context) => ForgotPasswordPage(),
         '/reset-password': (context) => ResetPasswordPage(), // Tambahkan ini
-
       },
     );
   }
@@ -302,10 +329,10 @@ class _MainPageState extends State<MainPage> {
           topRight: Radius.circular(10),
         ),
         child: Container(
-          color: Color(0xFF508AA7), 
+          color: Color(0xFF508AA7),
           height: 65,
           child: BottomNavigationBar(
-            backgroundColor:Colors.transparent,
+            backgroundColor: Colors.transparent,
             type: BottomNavigationBarType.fixed,
             currentIndex: screen,
             selectedItemColor: Theme.of(context).colorScheme.secondary,

@@ -35,6 +35,33 @@ dependencies:
   cupertino_icons: ^1.0.8
   iconify_flutter: ^0.0.7
   image_picker: ^1.0.4
+  
+  # Peta
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Lokasi
+  geolocator: ^14.0.1
+  # Notifications & Audio
+  flutter_local_notifications: ^17.2.3
+  audioplayers: ^6.4.0
+  
+  # State management
+  provider: ^6.1.5
+  
+  # Storage
+  shared_preferences: ^2.5.3
+  
+  # Permissions
+  permission_handler: ^12.0.0+1
+  
+  # Date formatting
+  intl: ^0.18.1
+
+  just_audio: ^0.9.36
+
+  flutter_background_service: ^5.0.1
+  
 
 dev_dependencies:
   flutter_test:
@@ -56,11 +83,10 @@ flutter:
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
-  uses-material-design: true
-
-  # To add assets to your application, add an assets section, like this:
+  uses-material-design: true  # To add assets to your application, add an assets section, like this:
   assets:
     - assets/map.png
+    - assets/sounds/alarm.mp3
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
