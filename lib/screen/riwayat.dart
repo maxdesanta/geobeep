@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:gobeap/models/alarm_history.dart';
-import 'package:gobeap/models/station_model.dart';
-import 'package:gobeap/providers/station_provider.dart';
+import 'package:geobeep/models/alarm_history.dart';
+import 'package:geobeep/models/station_model.dart';
+import 'package:geobeep/providers/station_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:gobeap/screen/map.dart';
-import 'package:gobeap/services/alarm_service.dart'; // Make sure this import points to your AlarmService
+import 'package:geobeep/screen/map.dart';
+import 'package:geobeep/services/alarm_service.dart'; // Make sure this import points to your AlarmService
 
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});

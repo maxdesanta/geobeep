@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AlarmService {
   static AlarmService? _instance;
@@ -17,26 +19,74 @@ class AlarmService {
   Timer? _autoStopTimer;
   Timer? _retryTimer;
   Timer? _vibrationTimer;
+  String? _customAlarmUrl;
+  StreamSubscription<DocumentSnapshot>? _userDocSubscription;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-
     try {
-      // Pre-load the alarm sound
-      await _audioPlayer.setAsset('assets/sounds/alarm.mp3');
-      await _audioPlayer.setLoopMode(LoopMode.one); // Loop the alarm
-
-      // Set volume to maximum
+      await _listenToAlarmSoundChanges();
+      await _loadCustomAlarmUrl();
+      if (_customAlarmUrl != null && _customAlarmUrl!.isNotEmpty) {
+        await _audioPlayer.setUrl(_customAlarmUrl!);
+      } else {
+        await _audioPlayer.setAsset('assets/sounds/alarm.mp3');
+      }
+      await _audioPlayer.setLoopMode(LoopMode.one);
       await _audioPlayer.setVolume(1.0);
-
       _isInitialized = true;
       debugPrint('AlarmService initialized successfully');
     } catch (e) {
       debugPrint('Failed to initialize AlarmService: $e');
-      // Try again after a delay
       _retryTimer?.cancel();
       _retryTimer = Timer(Duration(seconds: 2), initialize);
     }
+  }
+
+  Future<void> _listenToAlarmSoundChanges() async {
+    _userDocSubscription?.cancel();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _userDocSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .listen((doc) async {
+          final newUrl = doc.data()?['alarmSoundUrl'] as String?;
+          if (newUrl != _customAlarmUrl) {
+            _customAlarmUrl = newUrl;
+            _isInitialized = false;
+            await initialize();
+          }
+        });
+  }
+
+  Future<void> _loadCustomAlarmUrl() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        _customAlarmUrl = null;
+        return;
+      }
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+      if (doc.exists && doc.data() != null && doc['alarmSoundUrl'] != null) {
+        _customAlarmUrl = doc['alarmSoundUrl'];
+      } else {
+        _customAlarmUrl = null;
+      }
+    } catch (e) {
+      debugPrint('Error loading custom alarm url: $e');
+      _customAlarmUrl = null;
+    }
+  }
+
+  Future<void> refreshCustomAlarmSound() async {
+    _isInitialized = false;
+    await initialize();
   }
 
   Future<void> playAlarm() async {
@@ -44,30 +94,20 @@ class AlarmService {
       debugPrint('Alarm already playing');
       return;
     }
-
-    // If not initialized, try to initialize first
     if (!_isInitialized) {
       await initialize();
-      // If still not initialized, fall back to vibration
       if (!_isInitialized) {
         HapticFeedback.vibrate();
         return;
       }
     }
-
     try {
       debugPrint('Starting alarm sound...');
       _isPlaying = true;
-
-      // Play vibration immediately
       HapticFeedback.heavyImpact();
-
-      // Play sound
       await _audioPlayer.stop();
       await _audioPlayer.seek(Duration.zero);
       await _audioPlayer.play();
-
-      // Vibrate with pattern for extra attention
       _vibrationTimer?.cancel();
       _vibrationTimer = Timer.periodic(const Duration(milliseconds: 800), (
         timer,
@@ -78,18 +118,14 @@ class AlarmService {
         }
         HapticFeedback.vibrate();
       });
-
-      // Auto-stop after 10 seconds
       _autoStopTimer?.cancel();
       _autoStopTimer = Timer(const Duration(seconds: 10), () {
         stopAlarm();
       });
-
       debugPrint('Alarm started successfully');
     } catch (e) {
       _isPlaying = false;
       debugPrint('Error playing alarm: $e');
-      // Fallback to vibration if sound fails
       HapticFeedback.vibrate();
       Future.delayed(Duration(milliseconds: 500), () {
         HapticFeedback.vibrate();
@@ -102,7 +138,6 @@ class AlarmService {
 
   Future<void> stopAlarm() async {
     if (!_isPlaying) return;
-
     try {
       await _audioPlayer.stop();
       _autoStopTimer?.cancel();
@@ -111,7 +146,6 @@ class AlarmService {
       debugPrint('Alarm stopped successfully');
     } catch (e) {
       debugPrint('Error stopping alarm: $e');
-      // Even if there's an error, mark as not playing
       _isPlaying = false;
     }
   }
@@ -122,6 +156,7 @@ class AlarmService {
     stopAlarm();
     _retryTimer?.cancel();
     _vibrationTimer?.cancel();
+    _userDocSubscription?.cancel();
     _audioPlayer.dispose();
   }
 }

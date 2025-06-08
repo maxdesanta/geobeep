@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "301291029785",
+    "project_id": "geobeeps",
+    "storage_bucket": "geobeeps.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:301291029785:android:17b75e5b8081c98a01f188",
+        "android_client_info": {
+          "package_name": "com.example.geobeep"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "301291029785-ugv4buiot2qv1a4b72de42rpj36bdg0p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.geobeep",
+            "certificate_hash": "5c500b56c20cac97d68b20e1d84137b11f8e229d"
+          }
+        },
+        {
+          "client_id": "301291029785-lvmn5s8o685bad8caid913l4blmakhh3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuWjSJ-qhuHiAARoGAuSawuf3GrAw-jnw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "301291029785-lvmn5s8o685bad8caid913l4blmakhh3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "301291029785-vjmecl23kl059h4qsg43ri94lfukjk66.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.gobeap"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

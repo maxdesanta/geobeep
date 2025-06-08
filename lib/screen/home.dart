@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gobeap/models/station_model.dart';
-import 'package:gobeap/providers/station_provider.dart';
-import 'package:gobeap/screen/map.dart';
+import 'package:geobeep/models/station_model.dart';
+import 'package:geobeep/providers/station_provider.dart';
+import 'package:geobeep/screen/map.dart';
+import 'package:geobeep/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -25,10 +26,43 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(color: Theme.of(context).colorScheme.secondary),
         ),
         automaticallyImplyLeading: false,
-      ),
-      body: Consumer<StationProvider>(
-        builder: (context, stationProvider, child) {
+      ),      body: Consumer2<StationProvider, AuthService>(
+        builder: (context, stationProvider, authService, child) {
           final favoriteStations = stationProvider.favoriteStations;
+          final isAuthenticated = authService.isAuthenticated;
+
+          if (!isAuthenticated) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.lock, size: 80, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Stasiun Favorit',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Fitur ini hanya tersedia untuk pengguna yang sudah login',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/login');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF135E71),
+                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    ),
+                    child: Text('Login Sekarang'),
+                  ),
+                ],
+              ),
+            );
+          }
 
           return favoriteStations.isEmpty
               ? Center(
@@ -158,11 +192,10 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                      ],
-                    ),
-                    if (station.line != null && station.line!.isNotEmpty)
+                      ],                    ),
+                    if (station.line.isNotEmpty)
                       Text(
-                        station.line!,
+                        station.line,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.8),
                           fontSize: 14,
@@ -225,27 +258,57 @@ class _HomePageState extends State<HomePage> {
                         size: 20,
                       ),
                     ),
-                  ),
-                  SizedBox(width: 8),
+                  ),                  SizedBox(width: 8),
                   // Remove from favorites
-                  GestureDetector(
-                    onTap: () {
-                      provider.toggleFavorite(station);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${station.name} dihapus dari favorit'),
-                          duration: Duration(seconds: 2),
+                  Consumer<AuthService>(
+                    builder: (context, authService, child) {
+                      return GestureDetector(
+                        onTap: () {
+                          if (authService.isAuthenticated) {
+                            provider.toggleFavorite(station);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${station.name} dihapus dari favorit'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } else {
+                            // Show guest mode restriction dialog
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: Text('Fitur Premium'),
+                                content: Text('Anda perlu login untuk mengelola stasiun favorit.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text('Nanti'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      Navigator.pushNamed(context, '/login');
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF135E71),
+                                    ),
+                                    child: Text('Login Sekarang'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.star, color: Colors.yellow, size: 20),
                         ),
                       );
                     },
-                    child: Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(Icons.star, color: Colors.yellow, size: 20),
-                    ),
                   ),
                 ],
               ),

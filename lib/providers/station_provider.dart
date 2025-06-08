@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:gobeap/models/station_model.dart';
-import 'package:gobeap/models/alarm_history.dart';
-import 'package:gobeap/services/location_service.dart';
-import 'package:gobeap/services/alarm_service.dart';
-import 'package:gobeap/services/notification_service.dart';
-import 'package:gobeap/services/storage_service.dart';
-import 'package:gobeap/data/stations_data.dart';
+import 'package:geobeep/models/station_model.dart';
+import 'package:geobeep/models/alarm_history.dart';
+import 'package:geobeep/services/location_service.dart';
+import 'package:geobeep/services/alarm_service.dart';
+import 'package:geobeep/services/notification_service.dart';
+import 'package:geobeep/services/storage_service.dart';
+import 'package:geobeep/data/stations_data.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StationProvider extends ChangeNotifier {
   List<StationModel> _allStations = [];
@@ -288,33 +290,22 @@ class StationProvider extends ChangeNotifier {
 
   // Tambah alarm
   Future<bool> addStationAlarm(StationModel station, int radius) async {
-    try {
-      final index = _allStations.indexWhere((s) => s.id == station.id);
-      if (index == -1) return false;
-
-      _allStations[index] = _allStations[index].copyWith(
-        isAlarmActive: true,
-        radiusInMeters: radius,
-      );
-
-      await _saveStationSettings();
-
-      // Start monitoring if not already active
-      if (!_isMonitoring) {
-        await startMonitoring();
-      }
-      // If monitoring is already active and we have a position, check immediately
-      else if (_currentPosition != null) {
-        print('Checking alarm immediately after activation');
-        _checkAlarms(_currentPosition!);
-      }
-
-      notifyListeners();
-      return true;
-    } catch (e) {
-      print('Error adding station alarm: $e');
-      return false;
+    final index = _allStations.indexWhere((s) => s.id == station.id);
+    if (index == -1) return false;
+    _allStations[index] = _allStations[index].copyWith(
+      isAlarmActive: true,
+      radiusInMeters: radius,
+    );
+    await _saveStationSettings();
+    if (!_isMonitoring) {
+      await startMonitoring();
+    } else if (_currentPosition != null) {
+      _checkAlarms(_currentPosition!);
     }
+    notifyListeners();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) await syncToFirestore(user.uid);
+    return true;
   }
 
   // Update radius
@@ -338,75 +329,128 @@ class StationProvider extends ChangeNotifier {
 
   // Hapus alarm
   Future<bool> removeStationAlarm(String stationId) async {
+    final index = _allStations.indexWhere((s) => s.id == stationId);
+    if (index == -1) return false;
+    _allStations[index] = _allStations[index].copyWith(isAlarmActive: false);
+    AlarmService.instance.stopAlarm();
+    await _saveStationSettings();
+    notifyListeners();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) await syncToFirestore(user.uid);
+    return true;
+  }
+
+  // Sinkronisasi data ke Firestore
+  Future<void> syncToFirestore(String uid) async {
     try {
-      final index = _allStations.indexWhere((s) => s.id == stationId);
-      if (index == -1) return false;
-
-      _allStations[index] = _allStations[index].copyWith(isAlarmActive: false);
-
-      // Stop the alarm sound when alarm is removed
-      AlarmService.instance.stopAlarm();
-
-      await _saveStationSettings();
-      notifyListeners();
-      return true;
+      final favIds =
+          _allStations.where((s) => s.isFavorite).map((s) => s.id).toList();
+      final alarmSettings =
+          _allStations
+              .where((s) => s.isAlarmActive)
+              .map((s) => {'id': s.id, 'radiusInMeters': s.radiusInMeters})
+              .toList();
+      final historyMaps = _alarmHistory.map((h) => h.toMap()).toList();
+      await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'favoriteStations': favIds,
+        'alarmSettings': alarmSettings,
+        'alarmHistory': historyMaps,
+      }, SetOptions(merge: true));
     } catch (e) {
-      print('Error removing station alarm: $e');
-      return false;
+      print('Error syncing to Firestore: $e');
     }
   }
 
-  // Toggle favorite
-  Future<void> toggleFavorite(StationModel station) async {
+  // Load data dari Firestore
+  Future<void> loadFromFirestore(String uid) async {
     try {
-      final index = _allStations.indexWhere((s) => s.id == station.id);
-      if (index == -1) return;
-
-      // Toggle favorite status
-      _allStations[index] = _allStations[index].copyWith(
-        isFavorite: !_allStations[index].isFavorite,
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (!doc.exists) return;
+      final data = doc.data()!;
+      // Favorit
+      final favIds = List<String>.from(data['favoriteStations'] ?? []);
+      // Alarm aktif
+      final alarmSettings = List<Map<String, dynamic>>.from(
+        data['alarmSettings'] ?? [],
       );
-
-      // Save the updated settings
-      await _saveStationSettings();
-
-      // Update favorite stations
+      // Update _allStations dengan copyWith
+      _allStations =
+          _allStations.map((s) {
+            final isFav = favIds.contains(s.id);
+            final alarm = alarmSettings.firstWhere(
+              (a) => a['id'] == s.id,
+              orElse: () => {},
+            );
+            final isActive = alarm.isNotEmpty;
+            final radius = alarm['radiusInMeters'] ?? s.alarmRadius;
+            return s.copyWith(
+              isFavorite: isFav,
+              isAlarmActive: isActive,
+              radiusInMeters: radius,
+            );
+          }).toList();
+      // Riwayat
+      final historyList = List<Map<String, dynamic>>.from(
+        data['alarmHistory'] ?? [],
+      );
+      _alarmHistory = historyList.map((m) => AlarmHistory.fromMap(m)).toList();
       _updateFavoriteStations();
-
       notifyListeners();
     } catch (e) {
-      print('Error toggling favorite: $e');
+      print('Error loading from Firestore: $e');
     }
   }
 
-  // Check if station has active alarm
-  bool hasActiveAlarm(String stationId) {
-    try {
-      final station = _allStations.firstWhere(
-        (s) => s.id == stationId,
-        orElse:
-            () => StationModel(
-              id: '',
-              name: '',
-              line: '',
-              latitude: 0,
-              longitude: 0,
-              alarmRadius: 0, // Provide a default value for alarmRadius
-            ),
-      );
-      return station.isAlarmActive;
-    } catch (e) {
-      return false;
+  // Dipanggil saat user login/logout
+  Future<void> onUserChanged(User? user) async {
+    if (user == null) {
+      // Logout: clear data lokal
+      _favoriteStations.clear();
+      _alarmHistory.clear();
+      _allStations =
+          _allStations
+              .map((s) => s.copyWith(isFavorite: false, isAlarmActive: false))
+              .toList();
+      notifyListeners();
+    } else {
+      // Login: load data dari Firestore
+      await loadFromFirestore(user.uid);
     }
   }
 
-  // Get station by ID
-  StationModel? getStationById(String stationId) {
+  // Update aksi agar sync ke Firestore jika login
+  Future<void> toggleFavorite(StationModel station) async {
+    final index = _allStations.indexWhere((s) => s.id == station.id);
+    if (index == -1) return;
+    _allStations[index] = _allStations[index].copyWith(
+      isFavorite: !_allStations[index].isFavorite,
+    );
+    await _saveStationSettings();
+    _updateFavoriteStations();
+    notifyListeners();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) await syncToFirestore(user.uid);
+  }
+
+  // Helper to get station by ID
+  StationModel? getStationById(String id) {
     try {
-      return _allStations.firstWhere((s) => s.id == stationId);
-    } catch (e) {
+      return _allStations.firstWhere((s) => s.id == id);
+    } catch (_) {
       return null;
     }
+  }
+
+  // Clear alarm history
+  Future<void> clearAlarmHistory() async {
+    _alarmHistory.clear();
+    await _saveAlarmHistory();
+
+    // Stop any active alarm sounds
+    AlarmService.instance.stopAlarm();
+
+    notifyListeners();
   }
 
   // Update test station coordinates
@@ -527,19 +571,6 @@ class StationProvider extends ChangeNotifier {
       print('Error simulating near station: $e');
     }
   }
-
-  // Clear alarm history
-  Future<void> clearAlarmHistory() async {
-    _alarmHistory.clear();
-    await _saveAlarmHistory();
-
-    // Stop any active alarm sounds
-    AlarmService.instance.stopAlarm();
-
-    notifyListeners();
-  }
-
-  // Add this method to the StationProvider class
 
   // Force refresh current location
   Future<bool> refreshLocation() async {

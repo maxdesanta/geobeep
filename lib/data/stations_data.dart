@@ -1,4 +1,4 @@
-import 'package:gobeap/models/station_model.dart';
+import 'package:geobeep/models/station_model.dart';
 
 class StationsData {
   static List<StationModel> getAllStations() {

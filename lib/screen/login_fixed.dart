@@ -24,6 +24,7 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
+
   // Email/Password Login with Firebase
   Future<void> _handleEmailLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -47,10 +48,8 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text.trim(),
       );
       
-      // Navigate to main page after successful login
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
-      }
+      // No need to navigate, AuthWrapper will handle it automatically
+      // through the auth state changes stream
       
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Login failed';
@@ -69,31 +68,26 @@ class _LoginPageState extends State<LoginPage> {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Login failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Login failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+
   // Google Sign In with Firebase
   Future<void> _handleGoogleSignIn() async {
     setState(() {
@@ -104,34 +98,28 @@ class _LoginPageState extends State<LoginPage> {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userCredential = await authService.signInWithGoogle();
       
-      if (userCredential != null && mounted) {
-        // Navigate to main page after successful Google sign in
-        Navigator.pushReplacementNamed(context, '/main');
+      if (userCredential != null) {
+        // No need to navigate, AuthWrapper will handle it automatically
+        // through the auth state changes stream
       }
     } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign In failed: ${e.message}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign In failed: ${e.message}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign In failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign In failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -416,7 +404,8 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                 ),
               ),
-                // Continue as Guest Button
+              
+              // Continue as Guest Button
               Container(
                 margin: const EdgeInsets.only(bottom: 25),
                 height: 50,

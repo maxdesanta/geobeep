@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:gobeap/models/station_model.dart';
-import 'package:gobeap/providers/station_provider.dart';
+import 'package:geobeep/models/station_model.dart';
+import 'package:geobeep/providers/station_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';

@@ -1,35 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:geobeep/screen/home.dart';
-import 'package:geobeep/screen/login.dart';
-import 'package:geobeep/screen/profile.dart';
-import 'package:geobeep/screen/register.dart';
-import 'package:geobeep/screen/riwayat.dart';
-import 'package:geobeep/screen/forgot-password.dart';
-import 'package:geobeep/screen/reset-password.dart';
-import 'package:geobeep/screen/stasiun.dart';
-import 'package:geobeep/screens/auth_wrapper.dart';
+import 'package:gobeap/screen/home.dart';
+import 'package:gobeap/screen/login.dart';
+import 'package:gobeap/screen/profile.dart';
+import 'package:gobeap/screen/register.dart';
+import 'package:gobeap/screen/riwayat.dart';
+import 'package:gobeap/screen/forgot-password.dart';
+import 'package:gobeap/screen/reset-password.dart';
+import 'package:gobeap/screen/stasiun.dart';
+import 'package:gobeap/screens/auth_wrapper.dart';
 import 'package:provider/provider.dart';
-import 'package:geobeep/providers/station_provider.dart';
-import 'package:geobeep/services/notification_service.dart';
-import 'package:geobeep/services/auth_service.dart';
+import 'package:gobeap/providers/station_provider.dart';
+import 'package:gobeap/services/notification_service.dart';
+import 'package:gobeap/services/auth_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:geobeep/utils/app_logger.dart';
-import 'package:geobeep/screen/settings.dart';
 
 // import icon
 import 'package:iconify_flutter/iconify_flutter.dart';
 import 'package:iconify_flutter/icons/mdi.dart';
 import 'package:iconify_flutter/icons/heroicons.dart';
 
-// Global navigator key for navigating from outside of widget context
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  
   // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Initialize services
   await NotificationService.instance.initialize();
@@ -42,10 +40,9 @@ Future<void> main() async {
   // Start monitoring immediately when app starts
   // This will activate background location tracking
   await stationProvider.startMonitoring();
-
+  
   // Initialize AuthService
   final authService = AuthService();
-
   runApp(
     MultiProvider(
       providers: [
@@ -66,24 +63,18 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GeoBeep',
-      navigatorKey: navigatorKey, // Add global navigator key
+      title: 'GoBeep',
       theme: ThemeData(
-        primaryColor: Color(0xFF508AA7),
+        primaryColor: Color(0xFF508AA7), // Warna utama
         colorScheme: ColorScheme.light(
-          primary: Color(0xFF508AA7),
-          secondary: Color(0xFFFFFFFF),
+          primary: Color(0xFF508AA7), // Warna utama
+          secondary: Color(0xFFFFFFFF), // Warna sekunder
         ),
         useMaterial3: true,
       ),
-      // Start with splash screen
-      initialRoute: '/splash',
-
-      // Route definitions
+      initialRoute: '/',
       routes: {
-        '/splash': (context) => SplashScreen(),
         '/': (context) => AuthWrapper(),
-        '/main': (context) => MainPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot-password': (context) => const ForgotPasswordPage(),
@@ -92,13 +83,32 @@ class MyApp extends StatelessWidget {
         '/profile': (context) => const ProfilePage(),
         '/riwayat': (context) => const RiwayatPage(),
         '/stasiun': (context) => const StasiunPage(),
-        '/settings': (context) => const SettingsPage(),
+      },
+    );
+  }
+}
+      ),
+      // default nama router - mulai dengan splash screen
+      initialRoute: '/splash',
+
+      // daftar nama router
+      routes: <String, WidgetBuilder>{
+        '/splash': (context) => SplashScreen(),
+        '/': (context) => MainPage(),
+        '/stasiun': (context) => StasiunPage(),
+        '/riwayat': (context) => RiwayatPage(),
+        '/home': (context) => HomePage(),
+        '/profile': (context) => ProfilePage(),
+        '/login': (context) => LoginPage(),
+        '/register': (context) => RegisterPage(),
+        '/forgot-password': (context) => ForgotPasswordPage(),
+        '/reset-password': (context) => ResetPasswordPage(), // Tambahkan ini
       },
     );
   }
 }
 
-// Splash Screen Widget with Animation
+// Splash Screen Widget dengan Animasi
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -117,8 +127,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-
-    AppLogger.log("SplashScreen initialized");
 
     // Initialize animation controllers
     _fadeController = AnimationController(
@@ -150,15 +158,11 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     // Start animations with delays
-    _startAnimations(); // Navigate after animations complete
+    _startAnimations();
+
+    // Navigate after animations complete
     Future.delayed(Duration(seconds: 3), () {
-      AppLogger.log("SplashScreen navigation delay completed");
-      if (mounted) {
-        AppLogger.log("Navigating from SplashScreen to AuthWrapper");
-        Navigator.pushReplacementNamed(context, '/');
-      } else {
-        AppLogger.log("SplashScreen not mounted, skipping navigation");
-      }
+      Navigator.pushReplacementNamed(context, '/');
     });
   }
 
@@ -287,7 +291,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-// Bottom navigation page class
+// inisiasi variabel untuk bottomnavigation
 class MyPage {
   final String title;
   final String icon;
@@ -296,11 +300,11 @@ class MyPage {
   MyPage(this.title, this.icon, this.page);
 }
 
-// Main page with bottom navigation
+// bottom navigasi
 class MainPage extends StatefulWidget {
   final PageStorageBucket _page = PageStorageBucket();
 
-  // Fill content from MyPage class array
+  // mengisi kontent variabel di array dari class MyPage
   final List<MyPage> halaman = [
     MyPage(
       "Beranda",
@@ -330,6 +334,15 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int screen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Navigate to the main page after 3 seconds
+    Future.delayed(Duration(seconds: 3), () {
+      Navigator.pushReplacementNamed(context, '/main');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:gobeap/models/station_model.dart';
-import 'package:gobeap/providers/station_provider.dart';
-import 'package:gobeap/screen/map.dart';
+import 'package:geobeep/models/station_model.dart';
+import 'package:geobeep/providers/station_provider.dart';
+import 'package:geobeep/screen/map.dart';
+import 'package:geobeep/services/auth_service.dart';
 import 'package:provider/provider.dart';
 
 class StasiunPage extends StatefulWidget {
@@ -304,37 +305,92 @@ class _StasiunPageState extends State<StasiunPage> {
                                       ),
                                     ),
                                     Row(
-                                      children: [
-                                        // Favorite toggle
-                                        GestureDetector(
-                                          onTap: () {
-                                            stationProvider.toggleFavorite(
-                                              station,
+                                      children: [                                        // Favorite toggle
+                                        Consumer<AuthService>(
+                                          builder: (context, authService, child) {
+                                            final isAuthenticated = authService.isAuthenticated;
+                                            
+                                            return GestureDetector(
+                                              onTap: () {
+                                                if (isAuthenticated) {
+                                                  stationProvider.toggleFavorite(
+                                                    station,
+                                                  );
+                                                } else {
+                                                  // Show login prompt
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => AlertDialog(
+                                                      title: Text('Fitur Premium'),
+                                                      content: Text('Anda perlu login untuk menambahkan stasiun favorit.'),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.pop(context),
+                                                          child: Text('Nanti'),
+                                                        ),
+                                                        ElevatedButton(
+                                                          onPressed: () {
+                                                            Navigator.pop(context);
+                                                            Navigator.pushNamed(context, '/login');
+                                                          },
+                                                          style: ElevatedButton.styleFrom(
+                                                            backgroundColor: Color(0xFF135E71),
+                                                          ),
+                                                          child: Text('Login Sekarang'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                              child: Container(
+                                                padding: EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isFavorite
+                                                          ? Colors.yellow
+                                                              .withOpacity(0.3)
+                                                          : Colors.white
+                                                              .withOpacity(0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Stack(
+                                                  children: [
+                                                    Icon(
+                                                      isFavorite
+                                                          ? Icons.star
+                                                          : Icons.star_border,
+                                                      color:
+                                                          isFavorite
+                                                              ? Colors.yellow
+                                                              : Colors.black,
+                                                      size: 24,
+                                                    ),
+                                                    if (!isAuthenticated)
+                                                      Positioned(
+                                                        right: 0,
+                                                        bottom: 0,
+                                                        child: Container(
+                                                          padding: EdgeInsets.all(2),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            shape: BoxShape.circle,
+                                                            boxShadow: [
+                                                              BoxShadow(
+                                                                color: Colors.black26,
+                                                                blurRadius: 2,
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          child: Icon(Icons.lock, size: 10, color: Colors.grey[700]),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
                                             );
                                           },
-                                          child: Container(
-                                            padding: EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  isFavorite
-                                                      ? Colors.yellow
-                                                          .withOpacity(0.3)
-                                                      : Colors.white
-                                                          .withOpacity(0.2),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Icon(
-                                              isFavorite
-                                                  ? Icons.star
-                                                  : Icons.star_border,
-                                              color:
-                                                  isFavorite
-                                                      ? Colors.yellow
-                                                      : Colors.black,
-                                              size: 24,
-                                            ),
-                                          ),
                                         ),
                                         SizedBox(width: 8),
 

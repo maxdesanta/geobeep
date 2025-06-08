@@ -1,6 +1,6 @@
-# gobeap
+# GeoBeep
 
-A new Flutter project.
+A location-based alarm application built with Flutter that helps commuters get notified when they approach their destination station.
 
 ## Getting Started
 

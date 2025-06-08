@@ -1,6 +1,5 @@
-{
-    "name": "gobeap",
-    "short_name": "gobeap",
+{    "name": "GeoBeep",
+    "short_name": "GeoBeep",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

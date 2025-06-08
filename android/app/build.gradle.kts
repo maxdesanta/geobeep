@@ -1,11 +1,14 @@
 plugins {
     id("com.android.application")
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services")
+    // END: FlutterFire Configuration
     id("kotlin-android") 
     id("dev.flutter.flutter-gradle-plugin")
 }
 
 android {
-    namespace = "com.example.gobeap"
+    namespace = "com.example.geobeep"
     compileSdk = flutter.compileSdkVersion
     // ndkVersion = flutter.ndkVersion
     ndkVersion = "28.0.13004108"
@@ -22,13 +25,18 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.gobeap"
+        applicationId = "com.example.geobeep"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        resValue("string", "server_client_id", "1:301291029785:android:17b75e5b8081c98a01f188")
+
+
+        
     }
 
     buildTypes {

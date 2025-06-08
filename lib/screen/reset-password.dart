@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import 'package:geobeep/services/auth_service.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -12,16 +15,31 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
   final TextEditingController _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-
+  bool _isLoading = false;
+  
+  // Get the verification code from route arguments
+  String? _oobCode;
+  
+  @override
+  void initState() {
+    super.initState();
+    
+    // Delay to get arguments after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args != null && args is Map<String, dynamic> && args.containsKey('oobCode')) {
+        _oobCode = args['oobCode'];
+      }
+    });
+  }
   @override
   void dispose() {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
-
   // Handle reset password
-  void _handleResetPassword() {
+  void _handleResetPassword() async {
     if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -41,19 +59,78 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       );
       return;
     }
+    
+    // If no oobCode is found, we can't reset the password
+    if (_oobCode == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reset link is invalid or expired. Please request a new password reset.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+      // Navigate back to forgot password page
+      Navigator.pushReplacementNamed(context, '/forgot-password');
+      return;
+    }
+    
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+      
+      // Use AuthService to confirm password reset
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.confirmPasswordReset(
+        _oobCode!,
+        _passwordController.text,
+      );
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Password reset successful!'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-    // Show success message and navigate to login
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Password reset successful!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // Navigate back to login page
-    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      // Navigate back to login page
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+      
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Failed to reset password';
+      
+      if (e.code == 'expired-action-code') {
+        errorMessage = 'The reset link has expired. Please request a new one.';
+      } else if (e.code == 'invalid-action-code') {
+        errorMessage = 'The reset link is invalid. Please request a new one.';
+      } else if (e.code == 'user-disabled') {
+        errorMessage = 'This user account has been disabled.';
+      } else if (e.code == 'user-not-found') {
+        errorMessage = 'No user found for this email.';
+      } else if (e.code == 'weak-password') {
+        errorMessage = 'Password is too weak. Please use a stronger password.';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -247,7 +324,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _handleResetPassword,
+                        onPressed: _isLoading ? null : _handleResetPassword,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF135E71),
                           foregroundColor: Colors.white,
@@ -257,14 +334,23 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'RESET PASSWORD',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: "Inter",
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                strokeWidth: 2.0,
+                              ),
+                            )
+                          : const Text(
+                              'RESET PASSWORD',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                       ),
                     ),
 

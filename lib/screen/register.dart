@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:geobeep/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -15,6 +18,7 @@ class _RegisterPageState extends State<RegisterPage> {
   
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -328,20 +332,66 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                         ],
                       ),
-                      child: ElevatedButton(
-                        onPressed: () {
+                      child: ElevatedButton(                        onPressed: () async {
                           // Handle registration
                           if (_usernameController.text.isNotEmpty &&
                               _emailController.text.isNotEmpty &&
                               _passwordController.text.isNotEmpty &&
                               _confirmPasswordController.text.isNotEmpty) {
                             if (_passwordController.text == _confirmPasswordController.text) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Registration successful!'),
-                                ),
-                              );
-                              Navigator.pushReplacementNamed(context, '/login');
+                              try {
+                                // Show loading indicator
+                                setState(() {
+                                  _isLoading = true;
+                                });
+                                
+                                // Register the user with Firebase
+                                final authService = Provider.of<AuthService>(context, listen: false);
+                                await authService.registerWithEmailAndPassword(
+                                  _emailController.text.trim(),
+                                  _passwordController.text.trim(),
+                                  _usernameController.text.trim(),
+                                );
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Registration successful!'),
+                                  ),
+                                );
+                                Navigator.pushReplacementNamed(context, '/login');                              } on FirebaseAuthException catch (e) {
+                                String errorMessage = 'Registration failed';
+                                
+                                if (e.code == 'weak-password') {
+                                  errorMessage = 'The password is too weak. Use at least 6 characters';
+                                } else if (e.code == 'email-already-in-use') {
+                                  errorMessage = 'This email is already registered';
+                                } else if (e.code == 'invalid-email') {
+                                  errorMessage = 'Invalid email format';
+                                } else if (e.code == 'operation-not-allowed') {
+                                  errorMessage = 'Email/password registration is not enabled';
+                                } else if (e.code == 'too-many-requests') {
+                                  errorMessage = 'Too many attempts. Please try again later.';
+                                }
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(errorMessage),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              } catch (e) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Registration failed: ${e.toString()}'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              } finally {
+                                // Hide loading indicator
+                                setState(() {
+                                  _isLoading = false;
+                                });
+                              }
                             } else {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -365,13 +415,14 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
-                        ),
-                        child: const Text(
-                          'REGISTER',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: "Inter",
-                            fontWeight: FontWeight.w600,
+                        ),                        child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'REGISTER',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontFamily: "Inter",
+                                fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),

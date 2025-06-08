@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gobeap/providers/station_provider.dart';
+import 'package:geobeep/providers/station_provider.dart';
 import 'package:provider/provider.dart';
 
 class LocationStatusWidget extends StatelessWidget {
