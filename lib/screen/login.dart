@@ -16,7 +16,11 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
+
+  // Separate loading states for each button
+  bool _isEmailLoginLoading = false;
+  bool _isGoogleLoginLoading = false;
+  bool _isGuestLoginLoading = false;
 
   @override
   void dispose() {
@@ -24,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
+
   // Email/Password Login with Firebase
   Future<void> _handleEmailLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
@@ -37,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     setState(() {
-      _isLoading = true;
+      _isEmailLoginLoading = true;
     });
 
     try {
@@ -46,15 +51,14 @@ class _LoginPageState extends State<LoginPage> {
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      
+
       // Navigate to main page after successful login
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/main');
       }
-      
     } on FirebaseAuthException catch (e) {
       String errorMessage = 'Login failed';
-      
+
       if (e.code == 'user-not-found') {
         errorMessage = 'No user found with this email';
       } else if (e.code == 'wrong-password') {
@@ -68,13 +72,10 @@ class _LoginPageState extends State<LoginPage> {
       } else if (e.code == 'too-many-requests') {
         errorMessage = 'Too many failed attempts. Please try again later.';
       }
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -89,21 +90,22 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isEmailLoginLoading = false;
         });
       }
     }
   }
+
   // Google Sign In with Firebase
   Future<void> _handleGoogleSignIn() async {
     setState(() {
-      _isLoading = true;
+      _isGoogleLoginLoading = true;
     });
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userCredential = await authService.signInWithGoogle();
-      
+
       if (userCredential != null && mounted) {
         // Navigate to main page after successful Google sign in
         Navigator.pushReplacementNamed(context, '/main');
@@ -129,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isGoogleLoginLoading = false;
         });
       }
     }
@@ -137,25 +139,42 @@ class _LoginPageState extends State<LoginPage> {
 
   // Continue without login (Guest mode)
   Future<void> _handleGuestMode() async {
+    setState(() {
+      _isGuestLoginLoading = true;
+    });
+
     try {
+      // Simulate a short delay for better UX
+      await Future.delayed(const Duration(milliseconds: 500));
+
       // Navigate directly to main page without authentication
-      Navigator.pushReplacementNamed(context, '/main');
-      
-      // Show a snackbar to inform user about limited features
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Anda masuk sebagai tamu. Beberapa fitur dibatasi.'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/main');
+
+        // Show a snackbar to inform user about limited features
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Anda masuk sebagai tamu. Beberapa fitur dibatasi.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal masuk sebagai tamu: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal masuk sebagai tamu: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isGuestLoginLoading = false;
+        });
+      }
     }
   }
 
@@ -231,7 +250,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-              
+
               // Email Field
               Container(
                 margin: const EdgeInsets.only(bottom: 15),
@@ -258,7 +277,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              
+
               // Password Field
               Container(
                 margin: const EdgeInsets.only(bottom: 15),
@@ -274,8 +293,8 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _isPasswordVisible 
-                            ? Icons.visibility 
+                        _isPasswordVisible
+                            ? Icons.visibility
                             : Icons.visibility_off,
                         color: Theme.of(context).primaryColor,
                       ),
@@ -298,7 +317,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              
+
               // Forgot Password Link
               Container(
                 alignment: Alignment.centerRight,
@@ -317,13 +336,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              
+
               // Login Button
               Container(
                 margin: const EdgeInsets.only(bottom: 15),
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleEmailLogin,
+                  onPressed: _isEmailLoginLoading ? null : _handleEmailLogin,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Theme.of(context).primaryColor,
@@ -332,31 +351,36 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 2,
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        )
-                      : const Text(
-                          'LOGIN',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: "Inter",
-                            fontWeight: FontWeight.bold,
+                  child:
+                      _isEmailLoginLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                          : const Text(
+                            'LOGIN',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: "Inter",
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                 ),
               ),
-              
+
               // OR Divider
               Container(
                 margin: const EdgeInsets.symmetric(vertical: 20),
                 child: Row(
                   children: [
                     Expanded(
-                      child: Divider(
-                        color: Colors.grey[400],
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Colors.grey[400], thickness: 1),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 15),
@@ -370,21 +394,18 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     Expanded(
-                      child: Divider(
-                        color: Colors.grey[400],
-                        thickness: 1,
-                      ),
+                      child: Divider(color: Colors.grey[400], thickness: 1),
                     ),
                   ],
                 ),
               ),
-              
+
               // Sign in with Google Button
               Container(
                 margin: const EdgeInsets.only(bottom: 25),
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  onPressed: _isGoogleLoginLoading ? null : _handleGoogleSignIn,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.black,
                     backgroundColor: Colors.white,
@@ -394,34 +415,42 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 2,
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Iconify(
-                              Mdi.google,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Sign in with Google',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontFamily: "Inter",
-                                fontWeight: FontWeight.w500,
+                  child:
+                      _isGoogleLoginLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue,
                               ),
+                              strokeWidth: 2.5,
                             ),
-                          ],
-                        ),
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Iconify(Mdi.google, size: 24),
+                              const SizedBox(width: 10),
+                              const Text(
+                                'Sign in with Google',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontFamily: "Inter",
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                 ),
               ),
-                // Continue as Guest Button
+
+              // Continue as Guest Button
               Container(
                 margin: const EdgeInsets.only(bottom: 25),
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleGuestMode,
+                  onPressed: _isGuestLoginLoading ? null : _handleGuestMode,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.black,
                     backgroundColor: Colors.grey[200],
@@ -431,19 +460,29 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     elevation: 2,
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text(
-                          'CONTINUE AS GUEST',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: "Inter",
-                            fontWeight: FontWeight.w500,
+                  child:
+                      _isGuestLoginLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black54,
+                              ),
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                          : const Text(
+                            'CONTINUE AS GUEST',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: "Inter",
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
                 ),
               ),
-              
+
               // Register Link
               Container(
                 alignment: Alignment.center,

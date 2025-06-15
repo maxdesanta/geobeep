@@ -321,8 +321,8 @@ class _StasiunPageState extends State<StasiunPage> {
                                                   showDialog(
                                                     context: context,
                                                     builder: (context) => AlertDialog(
-                                                      title: Text('Fitur Premium'),
-                                                      content: Text('Anda perlu login untuk menambahkan stasiun favorit.'),
+                                                      title: Text('Fitur dikunci'),
+                                                      content: Text('Yuk login untuk menambahkan stasiun favorit.'),
                                                       actions: [
                                                         TextButton(
                                                           onPressed: () => Navigator.pop(context),
@@ -330,14 +330,18 @@ class _StasiunPageState extends State<StasiunPage> {
                                                         ),
                                                         ElevatedButton(
                                                           onPressed: () {
-                                                            Navigator.pop(context);
-                                                            Navigator.pushNamed(context, '/login');
+                                                          Navigator.pop(context);
+                                                          Navigator.pushNamed(context, '/login');
                                                           },
                                                           style: ElevatedButton.styleFrom(
-                                                            backgroundColor: Color(0xFF135E71),
+                                                          backgroundColor: Color(0xFF135E71),
                                                           ),
-                                                          child: Text('Login Sekarang'),
+                                                          child: Text(
+                                                          'Login Sekarang',
+                                                          style: TextStyle(color: Colors.white),
+                                                          ),
                                                         ),
+                                                        
                                                       ],
                                                     ),
                                                   );

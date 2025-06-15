@@ -39,7 +39,6 @@ class StationProvider extends ChangeNotifier {
   // Stasiun uji
   StationModel? _testStation;
   StationModel? get testStation => _testStation;
-
   // Inisialisasi provider dan load data
   Future<void> initialize() async {
     _isLoading = true;
@@ -47,7 +46,7 @@ class StationProvider extends ChangeNotifier {
 
     try {
       _allStations = StationsData.getAllStations();
-      // Remove test station initialization
+      _testStation = StationsData.getTestStation();
 
       await _loadSavedStationSettings();
       await _loadAlarmHistory();

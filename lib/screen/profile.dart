@@ -249,7 +249,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   child: const Text(
-                    'MASUK',
+                    'Login',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -271,7 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   child: Text(
-                    'DAFTAR',
+                    'Register',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

@@ -4,6 +4,10 @@ import 'package:geobeep/providers/station_provider.dart';
 import 'package:geobeep/screen/map.dart';
 import 'package:geobeep/services/auth_service.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'guide_dialog.dart';
+import 'onboarding_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +21,29 @@ class _HomePageState extends State<HomePage> {
   bool isNotificationOn = true;
 
   @override
+  void initState() {
+    super.initState();
+    _showGuideIfFirstLaunch();
+  }
+
+  Future<void> _showGuideIfFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+    if (!hasSeenOnboarding) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+        );
+      });
+    }
+  }
+
+  void _showGuideDialog() {
+    showDialog(context: context, builder: (context) => const GuideDialog());
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -26,7 +53,18 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(color: Theme.of(context).colorScheme.secondary),
         ),
         automaticallyImplyLeading: false,
-      ),      body: Consumer2<StationProvider, AuthService>(
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.help_outline,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+            tooltip: 'Panduan',
+            onPressed: _showGuideDialog,
+          ),
+        ],
+      ),
+      body: Consumer2<StationProvider, AuthService>(
         builder: (context, stationProvider, authService, child) {
           final favoriteStations = stationProvider.favoriteStations;
           final isAuthenticated = authService.isAuthenticated;
@@ -40,25 +78,37 @@ class _HomePageState extends State<HomePage> {
                   SizedBox(height: 16),
                   Text(
                     'Stasiun Favorit',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'Fitur ini hanya tersedia untuk pengguna yang sudah login',
+                    'Yuk login dulu.. biar bisa\nsimpan stasiun favorit kamu!',
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 24),
-                  ElevatedButton(
+                    ElevatedButton(
                     onPressed: () {
                       Navigator.pushNamed(context, '/login');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF135E71),
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                      ),
+                      foregroundColor: Colors.white, // set text color to white
                     ),
-                    child: Text('Login Sekarang'),
-                  ),
+                    child: Text(
+                      'Login Sekarang',
+                      style: TextStyle(color: Colors.white), // ensure text is white
+                    ),
+                    ),
+                  
                 ],
               ),
             );
@@ -192,7 +242,8 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                      ],                    ),
+                      ],
+                    ),
                     if (station.line.isNotEmpty)
                       Text(
                         station.line,
@@ -258,7 +309,8 @@ class _HomePageState extends State<HomePage> {
                         size: 20,
                       ),
                     ),
-                  ),                  SizedBox(width: 8),
+                  ),
+                  SizedBox(width: 8),
                   // Remove from favorites
                   Consumer<AuthService>(
                     builder: (context, authService, child) {
@@ -268,7 +320,9 @@ class _HomePageState extends State<HomePage> {
                             provider.toggleFavorite(station);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('${station.name} dihapus dari favorit'),
+                                content: Text(
+                                  '${station.name} dihapus dari favorit',
+                                ),
                                 duration: Duration(seconds: 2),
                               ),
                             );
@@ -276,26 +330,32 @@ class _HomePageState extends State<HomePage> {
                             // Show guest mode restriction dialog
                             showDialog(
                               context: context,
-                              builder: (context) => AlertDialog(
-                                title: Text('Fitur Premium'),
-                                content: Text('Anda perlu login untuk mengelola stasiun favorit.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text('Nanti'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      Navigator.pushNamed(context, '/login');
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Color(0xFF135E71),
+                              builder:
+                                  (context) => AlertDialog(
+                                    title: Text('Fitur Premium'),
+                                    content: Text(
+                                      'Anda perlu login untuk mengelola stasiun favorit.',
                                     ),
-                                    child: Text('Login Sekarang'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('Nanti'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/login',
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Color(0xFF135E71),
+                                        ),
+                                        child: Text('Login Sekarang'),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
                             );
                           }
                         },
@@ -305,7 +365,11 @@ class _HomePageState extends State<HomePage> {
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.star, color: Colors.yellow, size: 20),
+                          child: Icon(
+                            Icons.star,
+                            color: Colors.yellow,
+                            size: 20,
+                          ),
                         ),
                       );
                     },

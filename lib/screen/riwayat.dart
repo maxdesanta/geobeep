@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geobeep/screen/map.dart';
 import 'package:geobeep/services/alarm_service.dart'; // Make sure this import points to your AlarmService
+import 'package:geobeep/services/auth_service.dart';
 
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
@@ -42,12 +43,19 @@ class _RiwayatPageState extends State<RiwayatPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (history != null)
-                  Text(
-                    'Hi, wahid kamu sudah tiba di stasiun ${station.name} pada tanggal ${DateFormat('dd MMMM yyyy').format(history.triggeredAt)} pada pukul ${DateFormat('HH:mm').format(history.triggeredAt)}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.secondary,
-                    ),
-                    textAlign: TextAlign.center,
+                  Consumer<AuthService>(
+                    builder: (context, authService, child) {
+                      final user = authService.currentUser;
+                      final String username = user?.displayName ?? 'Pengguna';
+
+                      return Text(
+                        'Hi, $username kamu sudah tiba di stasiun ${station.name} pada tanggal ${DateFormat('dd MMMM yyyy').format(history.triggeredAt)} pada pukul ${DateFormat('HH:mm').format(history.triggeredAt)}',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.secondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      );
+                    },
                   )
                 else
                   Text(
@@ -281,51 +289,53 @@ class _RiwayatPageState extends State<RiwayatPage> {
                             shrinkWrap: true,
                             itemBuilder: (context, index) {
                               final station = activeAlarms[index];
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 21,
-                                ),
-                                margin: const EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            station.name,
-                                            style: TextStyle(
-                                              color:
-                                                  Theme.of(
-                                                    context,
-                                                  ).colorScheme.secondary,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                              return GestureDetector(
+                                onTap: () {
+                                  // Navigate to map showing the station location
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => MapPage(
+                                            selectedStations: [station],
                                           ),
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'Radius: ${station.radiusInMeters} meter',
-                                            style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .secondary
-                                                  .withOpacity(0.7),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          if (stationProvider.stationDistances
-                                              .containsKey(station.id))
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 21,
+                                  ),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
                                             Text(
-                                              'Jarak: ${(stationProvider.stationDistances[station.id]! / 1000).toStringAsFixed(2)} km',
+                                              station.name,
+                                              style: TextStyle(
+                                                color:
+                                                    Theme.of(
+                                                      context,
+                                                    ).colorScheme.secondary,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Radius: ${station.radiusInMeters} meter',
                                               style: TextStyle(
                                                 color: Theme.of(context)
                                                     .colorScheme
@@ -334,22 +344,61 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                                 fontSize: 12,
                                               ),
                                             ),
+                                            if (stationProvider.stationDistances
+                                                .containsKey(station.id))
+                                              Text(
+                                                'Jarak: ${(stationProvider.stationDistances[station.id]! / 1000).toStringAsFixed(2)} km',
+                                                style: TextStyle(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .secondary
+                                                      .withOpacity(0.7),
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Tap untuk lihat di peta',
+                                              style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .secondary
+                                                    .withOpacity(0.5),
+                                                fontSize: 10,
+                                                fontStyle: FontStyle.italic,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.map,
+                                            color:
+                                                Theme.of(
+                                                  context,
+                                                ).colorScheme.secondary,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          GestureDetector(
+                                            onTap: () {
+                                              stationProvider
+                                                  .removeStationAlarm(
+                                                    station.id,
+                                                  );
+                                            },
+                                            child: const Icon(
+                                              Icons.clear,
+                                              color: Colors.black,
+                                              size: 24,
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        stationProvider.removeStationAlarm(
-                                          station.id,
-                                        );
-                                      },
-                                      child: const Icon(
-                                        Icons.clear,
-                                        color: Colors.black,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               );
                             },
@@ -397,69 +446,112 @@ class _RiwayatPageState extends State<RiwayatPage> {
                         );
 
                         if (station == null) return SizedBox();
-
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 21,
-                          ),
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      station.name,
-                                      style: TextStyle(
-                                        color:
-                                            Theme.of(
-                                              context,
-                                            ).colorScheme.secondary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                        return GestureDetector(
+                          onTap: () {
+                            // Navigate to map showing the station location
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) =>
+                                        MapPage(selectedStations: [station]),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 21,
+                            ),
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        station.name,
+                                        style: TextStyle(
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        DateFormat(
+                                          'dd MMMM yyyy, HH:mm',
+                                        ).format(history.triggeredAt),
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.7),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'Tap untuk lihat di peta',
+                                        style: TextStyle(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .secondary
+                                              .withOpacity(0.5),
+                                          fontSize: 10,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.map,
+                                      color:
+                                          Theme.of(
+                                            context,
+                                          ).colorScheme.secondary,
+                                      size: 20,
                                     ),
-                                    SizedBox(height: 4),
-                                    Text(
-                                      DateFormat(
-                                        'dd MMMM yyyy, HH:mm',
-                                      ).format(history.triggeredAt),
-                                      style: TextStyle(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .secondary
-                                            .withOpacity(0.7),
-                                        fontSize: 12,
+                                    SizedBox(width: 8),
+                                    GestureDetector(
+                                      onTap: () {
+                                        _showAlarmDetailDialog(
+                                          station,
+                                          history,
+                                        );
+                                      },
+                                      child: Text(
+                                        'Aktifkan Kembali',
+                                        style: TextStyle(
+                                          color:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.secondary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  _showAlarmDetailDialog(station, history);
-                                },
-                                child: Text(
-                                  'Aktifkan Kembali',
-                                  style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.secondary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         );
                       },

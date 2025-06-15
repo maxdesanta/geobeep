@@ -57,7 +57,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Sign In to Continue',
+                      'Fill to Continue',
                       style: TextStyle(
                         fontSize: 18,
                         fontFamily: "Inter",

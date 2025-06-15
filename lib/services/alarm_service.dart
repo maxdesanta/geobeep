@@ -89,63 +89,87 @@ class AlarmService {
     await initialize();
   }
 
+  // Metode untuk memulai getaran dan menjaga agar tetap berjalan
+  void _startVibration() {
+    // Berikan getaran awal yang kuat
+    HapticFeedback.heavyImpact();
+
+    // Mulai getaran berulang
+    _vibrationTimer?.cancel();
+    _vibrationTimer = Timer.periodic(const Duration(milliseconds: 600), (
+      timer,
+    ) {
+      if (!_isPlaying) {
+        timer.cancel();
+        return;
+      }
+      HapticFeedback.vibrate();
+    });
+  }
+
   Future<void> playAlarm() async {
     if (_isPlaying) {
       debugPrint('Alarm already playing');
       return;
     }
+
     if (!_isInitialized) {
       await initialize();
       if (!_isInitialized) {
-        HapticFeedback.vibrate();
+        // Jika inisialisasi gagal, tetap berikan getaran
+        _startVibration();
         return;
       }
     }
+
     try {
       debugPrint('Starting alarm sound...');
       _isPlaying = true;
-      HapticFeedback.heavyImpact();
+
+      // Mulai getaran bersamaan dengan persiapan suara
+      _startVibration();
+
+      // Siapkan dan putar audio
       await _audioPlayer.stop();
       await _audioPlayer.seek(Duration.zero);
       await _audioPlayer.play();
-      _vibrationTimer?.cancel();
-      _vibrationTimer = Timer.periodic(const Duration(milliseconds: 800), (
-        timer,
-      ) {
-        if (!_isPlaying) {
-          timer.cancel();
-          return;
-        }
-        HapticFeedback.vibrate();
-      });
-      _autoStopTimer?.cancel();
-      _autoStopTimer = Timer(const Duration(seconds: 10), () {
-        stopAlarm();
-      });
+
+      // Timer untuk auto-stop dinonaktifkan agar alarm tetap berjalan
+      // sampai pengguna mematikannya secara manual
+      // _autoStopTimer?.cancel();
+      // _autoStopTimer = Timer(const Duration(seconds: 10), () {
+      //   stopAlarm();
+      // });
+
       debugPrint('Alarm started successfully');
     } catch (e) {
-      _isPlaying = false;
+      // Jika audio gagal, tetap jalankan getaran
+      _isPlaying = true; // Tetapkan true agar getaran berjalan
       debugPrint('Error playing alarm: $e');
-      HapticFeedback.vibrate();
-      Future.delayed(Duration(milliseconds: 500), () {
-        HapticFeedback.vibrate();
-      });
-      Future.delayed(Duration(milliseconds: 1000), () {
-        HapticFeedback.vibrate();
-      });
+
+      // Aktifkan getaran meskipun audio gagal
+      _startVibration();
     }
   }
 
   Future<void> stopAlarm() async {
     if (!_isPlaying) return;
+
     try {
+      // Hentikan audio
       await _audioPlayer.stop();
+
+      // Hentikan semua timer
       _autoStopTimer?.cancel();
       _vibrationTimer?.cancel();
+
+      // Set status ke tidak aktif
       _isPlaying = false;
       debugPrint('Alarm stopped successfully');
     } catch (e) {
       debugPrint('Error stopping alarm: $e');
+      // Pastikan getaran dan timer berhenti meskipun audio gagal berhenti
+      _vibrationTimer?.cancel();
       _isPlaying = false;
     }
   }
