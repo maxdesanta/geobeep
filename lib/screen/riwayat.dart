@@ -270,7 +270,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Container(
+                SizedBox(
                   height: 240, // Atur tinggi container agar ListView scrollable
                   child:
                       activeAlarms.isEmpty

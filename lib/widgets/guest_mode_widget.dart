@@ -8,10 +8,10 @@ class GuestModeWarning extends StatelessWidget {
   final VoidCallback? onLoginPressed;
 
   const GuestModeWarning({
-    Key? key,
+    super.key,
     required this.featureName,
     this.onLoginPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -106,11 +106,11 @@ class PremiumFeatureGuard extends StatelessWidget {
   final Widget? fallback;
 
   const PremiumFeatureGuard({
-    Key? key,
+    super.key,
     required this.child,
     required this.featureName,
     this.fallback,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

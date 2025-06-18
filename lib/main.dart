@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'package:geobeep/providers/station_provider.dart';
 import 'package:geobeep/services/notification_service.dart';
 import 'package:geobeep/services/auth_service.dart';
+import 'package:geobeep/services/foreground_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:geobeep/utils/app_logger.dart';
@@ -27,21 +28,26 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize services
-  await NotificationService.instance.initialize();
-  // await AlarmService.instance.initialize();
+  // Inisialisasi service secara berurutan untuk memastikan semuanya berjalan dengan benar
 
-  // Pre-initialize the StationProvider
+  // 1. Initialize notification service terlebih dahulu
+  await NotificationService.instance.initialize();
+
+  // 2. Initialize foreground service - hanya inisialisasi, tidak autostart
+  await ForegroundService.instance.initialize();
+
+  // 3. Pre-initialize the StationProvider
   final stationProvider = StationProvider();
   await stationProvider.initialize();
 
-  // Start monitoring immediately when app starts
-  // This will activate background location tracking
+  // 4. Start monitoring untuk tracking lokasi
   await stationProvider.startMonitoring();
+
+  // 5. Start foreground service untuk menampilkan notifikasi aplikasi berjalan
+  await ForegroundService.instance.startService();
 
   // Initialize AuthService
   final authService = AuthService();
@@ -100,6 +106,8 @@ class MyApp extends StatelessWidget {
 
 // Splash Screen Widget with Animation
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -324,19 +332,74 @@ class MainPage extends StatefulWidget {
     ),
   ];
 
+  MainPage({super.key});
+
   @override
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
   int screen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Register observer untuk lifecycle events
+    WidgetsBinding.instance.addObserver(this);
+
+    // Pastikan foreground service berjalan
+    _ensureForegroundServiceRunning();
+  }
+
+  @override
+  void dispose() {
+    // Unregister observer
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Handle application lifecycle state changes  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    if (state == AppLifecycleState.resumed) {
+      // App kembali ke foreground, start notification service
+      _startForegroundService();
+    } else if (state == AppLifecycleState.detached) {
+      // App benar-benar ditutup, stop notification service
+      _stopForegroundService();
+    }
+  }
+
+  // Mulai foreground service dengan notifikasi
+  Future<void> _startForegroundService() async {
+    debugPrint('Starting foreground service for app notification');
+    await ForegroundService.instance.startService();
+  }
+
+  // Hentikan foreground service saat app ditutup
+  Future<void> _stopForegroundService() async {
+    debugPrint('Stopping foreground service');
+    await ForegroundService.instance.stopService();
+  }
+
+  // Memastikan foreground service berjalan saat app aktif  // Memastikan foreground service berjalan saat app aktif
+  Future<void> _ensureForegroundServiceRunning() async {
+    final isRunning = await ForegroundService.instance.isRunning;
+    if (!isRunning) {
+      debugPrint('Foreground service not running, starting it');
+      await _startForegroundService();
+    } else {
+      debugPrint('Foreground service already running');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: PageStorage(
-        child: widget.halaman[screen].page,
         bucket: widget._page,
+        child: widget.halaman[screen].page,
       ),
       bottomNavigationBar: ClipRRect(
         borderRadius: BorderRadius.only(

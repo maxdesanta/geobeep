@@ -14,7 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 class StationProvider extends ChangeNotifier {
   List<StationModel> _allStations = [];
   List<StationModel> _favoriteStations = [];
-  Map<String, double> _stationDistances = {};
+  final Map<String, double> _stationDistances = {};
   bool _isLoading = false;
   bool _isMonitoring = false;
   Position? _currentPosition;
@@ -38,8 +38,8 @@ class StationProvider extends ChangeNotifier {
 
   // Stasiun uji
   StationModel? _testStation;
-  StationModel? get testStation => _testStation;
-  // Inisialisasi provider dan load data
+  StationModel? get testStation =>
+      _testStation; // Inisialisasi provider dan load data
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
@@ -48,8 +48,20 @@ class StationProvider extends ChangeNotifier {
       _allStations = StationsData.getAllStations();
       _testStation = StationsData.getTestStation();
 
+      // Load local data first (for offline usage and fallback)
       await _loadSavedStationSettings();
       await _loadAlarmHistory();
+
+      // Check if user is already logged in and load their data from Firestore
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        print(
+          '🔐 User already logged in during initialization: ${currentUser.uid}',
+        );
+        await loadFromFirestore(currentUser.uid);
+      } else {
+        print('👤 No user logged in during initialization, using local data');
+      }
 
       if (_currentPosition != null) {
         _updateDistances();
@@ -287,24 +299,41 @@ class StationProvider extends ChangeNotifier {
     }
   }
 
-  // Tambah alarm
+  // Tambah alarm with Firebase sync
   Future<bool> addStationAlarm(StationModel station, int radius) async {
-    final index = _allStations.indexWhere((s) => s.id == station.id);
-    if (index == -1) return false;
-    _allStations[index] = _allStations[index].copyWith(
-      isAlarmActive: true,
-      radiusInMeters: radius,
-    );
-    await _saveStationSettings();
-    if (!_isMonitoring) {
-      await startMonitoring();
-    } else if (_currentPosition != null) {
-      _checkAlarms(_currentPosition!);
+    try {
+      final index = _allStations.indexWhere((s) => s.id == station.id);
+      if (index == -1) return false;
+
+      _allStations[index] = _allStations[index].copyWith(
+        isAlarmActive: true,
+        radiusInMeters: radius,
+      );
+
+      // Save to local storage
+      await _saveStationSettings();
+
+      // Update monitoring status if needed
+      if (!_isMonitoring) {
+        await startMonitoring();
+      } else if (_currentPosition != null) {
+        _checkAlarms(_currentPosition!);
+      }
+
+      notifyListeners();
+
+      // Sync to Firebase if user is logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('Syncing alarm settings to Firebase for user: ${user.uid}');
+        await syncToFirestore(user.uid);
+      }
+
+      return true;
+    } catch (e) {
+      print('Error adding station alarm: $e');
+      return false;
     }
-    notifyListeners();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) await syncToFirestore(user.uid);
-    return true;
   }
 
   // Update radius
@@ -326,35 +355,68 @@ class StationProvider extends ChangeNotifier {
     }
   }
 
-  // Hapus alarm
+  // Remove alarm with Firebase sync
   Future<bool> removeStationAlarm(String stationId) async {
-    final index = _allStations.indexWhere((s) => s.id == stationId);
-    if (index == -1) return false;
-    _allStations[index] = _allStations[index].copyWith(isAlarmActive: false);
-    AlarmService.instance.stopAlarm();
-    await _saveStationSettings();
-    notifyListeners();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) await syncToFirestore(user.uid);
-    return true;
+    try {
+      final index = _allStations.indexWhere((s) => s.id == stationId);
+      if (index == -1) return false;
+
+      _allStations[index] = _allStations[index].copyWith(isAlarmActive: false);
+
+      // Stop any playing alarm sounds
+      AlarmService.instance.stopAlarm();
+
+      // Save to local storage
+      await _saveStationSettings();
+
+      notifyListeners();
+
+      // Sync to Firebase if user is logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('Syncing alarm removal to Firebase for user: ${user.uid}');
+        await syncToFirestore(user.uid);
+      }
+
+      return true;
+    } catch (e) {
+      print('Error removing station alarm: $e');
+      return false;
+    }
   }
 
   // Sinkronisasi data ke Firestore
   Future<void> syncToFirestore(String uid) async {
     try {
+      // Get favorite station IDs
       final favIds =
           _allStations.where((s) => s.isFavorite).map((s) => s.id).toList();
+
+      // Get all alarm settings (active alarms)
       final alarmSettings =
           _allStations
               .where((s) => s.isAlarmActive)
-              .map((s) => {'id': s.id, 'radiusInMeters': s.radiusInMeters})
+              .map(
+                (s) => {
+                  'id': s.id,
+                  'radiusInMeters': s.radiusInMeters,
+                  'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                },
+              )
               .toList();
+
+      // Convert alarm history to maps with all details
       final historyMaps = _alarmHistory.map((h) => h.toMap()).toList();
+
+      // Save everything to the user's document
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'favoriteStations': favIds,
         'alarmSettings': alarmSettings,
         'alarmHistory': historyMaps,
+        'lastSync': DateTime.now().millisecondsSinceEpoch,
       }, SetOptions(merge: true));
+
+      print('Successfully synced user data to Firestore for user: $uid');
     } catch (e) {
       print('Error syncing to Firestore: $e');
     }
@@ -363,93 +425,189 @@ class StationProvider extends ChangeNotifier {
   // Load data dari Firestore
   Future<void> loadFromFirestore(String uid) async {
     try {
+      print('🔄 Loading data from Firestore for user: $uid');
       final doc =
           await FirebaseFirestore.instance.collection('users').doc(uid).get();
-      if (!doc.exists) return;
+
+      if (!doc.exists) {
+        print('❌ No existing data found for user: $uid');
+        return;
+      }
+
       final data = doc.data()!;
-      // Favorit
+      print('✅ Found user data in Firestore: ${data.keys}');
+
+      // Load favorite stations
       final favIds = List<String>.from(data['favoriteStations'] ?? []);
-      // Alarm aktif
+      print('⭐ Loading ${favIds.length} favorite stations: $favIds');
+
+      // Load alarm settings
       final alarmSettings = List<Map<String, dynamic>>.from(
         data['alarmSettings'] ?? [],
       );
-      // Update _allStations dengan copyWith
+      print('🔔 Loading ${alarmSettings.length} alarm settings');
+
+      // Update stations with favorites and alarm settings
       _allStations =
           _allStations.map((s) {
+            // Check if station is in favorites
             final isFav = favIds.contains(s.id);
-            final alarm = alarmSettings.firstWhere(
+
+            // Check if station has active alarm
+            final alarmSetting = alarmSettings.firstWhere(
               (a) => a['id'] == s.id,
               orElse: () => {},
             );
-            final isActive = alarm.isNotEmpty;
-            final radius = alarm['radiusInMeters'] ?? s.alarmRadius;
+
+            final isActive = alarmSetting.isNotEmpty;
+            final radius = alarmSetting['radiusInMeters'] ?? s.radiusInMeters;
+
+            if (isFav || isActive) {
+              print(
+                '📍 Station ${s.name}: favorite=$isFav, alarm=$isActive, radius=$radius',
+              );
+            }
+
             return s.copyWith(
               isFavorite: isFav,
               isAlarmActive: isActive,
               radiusInMeters: radius,
             );
           }).toList();
-      // Riwayat
-      final historyList = List<Map<String, dynamic>>.from(
-        data['alarmHistory'] ?? [],
-      );
-      _alarmHistory = historyList.map((m) => AlarmHistory.fromMap(m)).toList();
+
+      // Load alarm history
+      if (data.containsKey('alarmHistory')) {
+        final historyList = List<Map<String, dynamic>>.from(
+          data['alarmHistory'] ?? [],
+        );
+        _alarmHistory =
+            historyList.map((m) => AlarmHistory.fromMap(m)).toList();
+        print('📋 Loaded ${_alarmHistory.length} alarm history records');
+      }
+
+      // Update local favorites list
       _updateFavoriteStations();
+      print('⭐ Updated favorites list: ${_favoriteStations.length} stations');
+
+      // Save locally to SharedPreferences for offline access
+      await _saveStationSettings();
+      await _saveAlarmHistory();
+      print('💾 Saved data locally for offline access');
+
       notifyListeners();
+      print('🔔 UI notified of data changes');
     } catch (e) {
-      print('Error loading from Firestore: $e');
+      print('❌ Error loading from Firestore: $e');
     }
   }
 
   // Dipanggil saat user login/logout
   Future<void> onUserChanged(User? user) async {
-    if (user == null) {
-      // Logout: clear data lokal
-      _favoriteStations.clear();
-      _alarmHistory.clear();
-      _allStations =
-          _allStations
-              .map((s) => s.copyWith(isFavorite: false, isAlarmActive: false))
-              .toList();
-      notifyListeners();
-    } else {
-      // Login: load data dari Firestore
-      await loadFromFirestore(user.uid);
-    }
-  }
-
-  // Update aksi agar sync ke Firestore jika login
-  Future<void> toggleFavorite(StationModel station) async {
-    final index = _allStations.indexWhere((s) => s.id == station.id);
-    if (index == -1) return;
-    _allStations[index] = _allStations[index].copyWith(
-      isFavorite: !_allStations[index].isFavorite,
-    );
-    await _saveStationSettings();
-    _updateFavoriteStations();
-    notifyListeners();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) await syncToFirestore(user.uid);
-  }
-
-  // Helper to get station by ID
-  StationModel? getStationById(String id) {
     try {
-      return _allStations.firstWhere((s) => s.id == id);
-    } catch (_) {
-      return null;
+      if (user == null) {
+        // Logout: clear user data and reset to default settings
+        print('🚪 User logged out, clearing user-specific data');
+
+        // Reset all favorites
+        _favoriteStations.clear();
+
+        // Reset all alarms
+        _allStations =
+            _allStations
+                .map((s) => s.copyWith(isFavorite: false, isAlarmActive: false))
+                .toList();
+
+        // Clear alarm history
+        _alarmHistory.clear();
+
+        // Stop any playing alarms
+        AlarmService.instance.stopAlarm();
+
+        // Save cleared settings locally
+        await _saveStationSettings();
+        await _saveAlarmHistory();
+
+        notifyListeners();
+        print('✅ User data cleared and UI updated');
+      } else {
+        // Login: load data from Firestore
+        print('🔐 User logged in: ${user.uid}, loading data from Firestore');
+
+        // First ensure we have basic station data loaded
+        if (_allStations.isEmpty) {
+          print('📡 No stations loaded, initializing...');
+          _allStations = StationsData.getAllStations();
+          _testStation = StationsData.getTestStation();
+        }
+
+        await loadFromFirestore(user.uid);
+
+        // If in monitoring mode, immediately check alarms with new settings
+        if (_isMonitoring && _currentPosition != null) {
+          print('📍 Re-checking alarms with new user settings');
+          _checkAlarms(_currentPosition!);
+        }
+
+        print('✅ User login process completed');
+      }
+    } catch (e) {
+      print('❌ Error in onUserChanged: $e');
     }
   }
 
-  // Clear alarm history
+  // Toggle favorite with Firebase sync
+  Future<void> toggleFavorite(StationModel station) async {
+    try {
+      final index = _allStations.indexWhere((s) => s.id == station.id);
+      if (index == -1) return;
+
+      _allStations[index] = _allStations[index].copyWith(
+        isFavorite: !_allStations[index].isFavorite,
+      );
+
+      // Save to local storage
+      await _saveStationSettings();
+
+      // Update favorite stations list
+      _updateFavoriteStations();
+
+      notifyListeners();
+
+      // Sync to Firebase if user is logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print('Syncing favorite changes to Firebase for user: ${user.uid}');
+        await syncToFirestore(user.uid);
+      }
+    } catch (e) {
+      print('Error toggling favorite: $e');
+    }
+  }
+
+  // Clear alarm history with Firebase sync
   Future<void> clearAlarmHistory() async {
-    _alarmHistory.clear();
-    await _saveAlarmHistory();
+    try {
+      _alarmHistory.clear();
 
-    // Stop any active alarm sounds
-    AlarmService.instance.stopAlarm();
+      // Save to local storage
+      await _saveAlarmHistory();
 
-    notifyListeners();
+      // Stop any active alarm sounds
+      AlarmService.instance.stopAlarm();
+
+      notifyListeners();
+
+      // Sync to Firebase if user is logged in
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        print(
+          'Syncing alarm history clearing to Firebase for user: ${user.uid}',
+        );
+        await syncToFirestore(user.uid);
+      }
+    } catch (e) {
+      print('Error clearing alarm history: $e');
+    }
   }
 
   // Update test station coordinates
@@ -525,6 +683,15 @@ class StationProvider extends ChangeNotifier {
       _favoriteStations = _allStations.where((s) => s.isFavorite).toList();
     } catch (e) {
       print('Error loading saved station settings: $e');
+    }
+  }
+
+  // Helper to get station by ID
+  StationModel? getStationById(String id) {
+    try {
+      return _allStations.firstWhere((s) => s.id == id);
+    } catch (_) {
+      return null;
     }
   }
 

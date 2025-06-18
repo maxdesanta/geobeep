@@ -175,7 +175,7 @@ class _GuideDialogState extends State<GuideDialog>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Animation
-                      Container(
+                      SizedBox(
                         height: 150,
                         width: 150,
                         child: Lottie.network(

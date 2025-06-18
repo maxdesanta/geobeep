@@ -37,7 +37,7 @@ class _RegisterPageState extends State<RegisterPage> {
         child: Column(
           children: [
             // Header Section
-            Container(
+            SizedBox(
               height: MediaQuery.of(context).size.height * 0.35,
               width: double.infinity,
               child: Padding(

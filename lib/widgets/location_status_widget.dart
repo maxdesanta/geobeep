@@ -3,7 +3,7 @@ import 'package:geobeep/providers/station_provider.dart';
 import 'package:provider/provider.dart';
 
 class LocationStatusWidget extends StatelessWidget {
-  const LocationStatusWidget({Key? key}) : super(key: key);
+  const LocationStatusWidget({super.key});
 
   @override
   Widget build(BuildContext context) {

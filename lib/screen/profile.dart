@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:geobeep/services/auth_service.dart';
+import 'package:geobeep/services/foreground_service.dart';
+import 'package:geobeep/widgets/app_status_indicator.dart';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -210,6 +212,12 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Status Indicator
+              const Padding(
+                padding: EdgeInsets.only(bottom: 20.0),
+                child: AppStatusIndicator(backgroundColor: Color(0xFFE3F2FD)),
+              ),
+
               // Guest icon
               Icon(Icons.person_outline, size: 80, color: Colors.grey[400]),
               const SizedBox(height: 20),
@@ -338,6 +346,13 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 20),
+
+          // Status Indicator
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: AppStatusIndicator(backgroundColor: Color(0xFFE3F2FD)),
           ),
           const SizedBox(height: 20),
 

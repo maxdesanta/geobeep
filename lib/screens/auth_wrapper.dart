@@ -7,7 +7,7 @@ import 'package:geobeep/screen/login.dart';
 import 'package:geobeep/utils/app_logger.dart';
 
 class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({Key? key}) : super(key: key);
+  const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -10,7 +10,7 @@ import 'dart:math';
 class MapPage extends StatefulWidget {
   final List<StationModel>? selectedStations;
 
-  const MapPage({Key? key, this.selectedStations}) : super(key: key);
+  const MapPage({super.key, this.selectedStations});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -508,7 +508,7 @@ class _MapPageState extends State<MapPage> {
                                           ],
                                         ),
                                       );
-                                    }).toList(),
+                                    }),
                                   ],
                                 ),
                             ],
@@ -599,36 +599,36 @@ class _MapPageState extends State<MapPage> {
                 // Custom radius input
                 Row(
                   children: [
-                  Expanded(
-                    child: TextField(
-                    controller: customRadiusController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Radius kustom (meter)',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
+                    Expanded(
+                      child: TextField(
+                        controller: customRadiusController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Radius kustom (meter)',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        style: TextStyle(
+                          color: Colors.black, // Pastikan teks terlihat
+                        ),
                       ),
                     ),
-                    style: TextStyle(
-                      color: Colors.black, // Pastikan teks terlihat
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _setCustomRadius,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                      ),
+                      child: Text(
+                        'Set',
+                        style: TextStyle(
+                          color: Colors.white, // Pastikan teks tombol terlihat
+                        ),
+                      ),
                     ),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _setCustomRadius,
-                    child: Text(
-                    'Set',
-                    style: TextStyle(
-                      color: Colors.white, // Pastikan teks tombol terlihat
-                    ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
                   ],
                 ),
 
@@ -673,11 +673,11 @@ class _MapPageState extends State<MapPage> {
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: _updateTestStationCoordinates,
-                                    child: Text('Perbarui Koordinat'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor:
                                           Theme.of(context).colorScheme.primary,
                                     ),
+                                    child: Text('Perbarui Koordinat'),
                                   ),
                                 ),
                                 SizedBox(width: 8),
@@ -712,10 +712,10 @@ class _MapPageState extends State<MapPage> {
                                         );
                                       }
                                     },
-                                    child: Text('Test Alarm'),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.orange,
                                     ),
+                                    child: Text('Test Alarm'),
                                   ),
                                 ),
                               ],
@@ -744,11 +744,11 @@ class _MapPageState extends State<MapPage> {
                                     _updateTestStationCoordinates();
                                   }
                                 },
-                                child: Text('Gunakan Lokasi Saat Ini'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.green,
                                   minimumSize: Size(double.infinity, 40),
                                 ),
+                                child: Text('Gunakan Lokasi Saat Ini'),
                               ),
                           ],
                         ),
@@ -763,19 +763,19 @@ class _MapPageState extends State<MapPage> {
                     widget.selectedStations!.isNotEmpty)
                   ElevatedButton(
                     onPressed: _activateAlarms,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(double.infinity, 50),
+                      backgroundColor: Color(0xFF135E71),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
                     child: Text(
                       'Aktifkan Alarm untuk ${widget.selectedStations!.length} Stasiun',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(double.infinity, 50),
-                      backgroundColor: Color(0xFF135E71),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),

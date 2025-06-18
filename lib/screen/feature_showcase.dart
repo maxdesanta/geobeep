@@ -130,9 +130,9 @@ mixin ShowcaseMixin<T extends StatefulWidget> on State<T> {
       key: getShowcaseKey(keyName),
       title: title,
       description: description,
+      targetShapeBorder: targetShapeBorder ?? const RoundedRectangleBorder(),
       // Only pass targetShapeBorder if it's not null
       child: child,
-      targetShapeBorder: targetShapeBorder ?? const RoundedRectangleBorder(),
     );
   }
 }

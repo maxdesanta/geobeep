@@ -17,7 +17,7 @@ class _StasiunPageState extends State<StasiunPage> {
   List<StationModel> selectedStations = [];
 
   // Filter variables
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedLine = 'Semua Jalur';
 
@@ -542,6 +542,13 @@ class _StasiunPageState extends State<StasiunPage> {
                               ),
                             );
                           },
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: Size(double.infinity, 50),
+                            backgroundColor: Color(0xFF135E71),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -560,13 +567,6 @@ class _StasiunPageState extends State<StasiunPage> {
                                 ),
                               ),
                             ],
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: Size(double.infinity, 50),
-                            backgroundColor: Color(0xFF135E71),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
                           ),
                         ),
                       ],

@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"args": [
+				"clean",
+				"&&",
+				"flutter",
+				"pub",
+				"get",
+				"&&",
+				"flutter",
+				"build",
+				"apk",
+				"--debug"
+			],
+			"command": "flutter",
+			"group": "build",
+			"isBackground": false,
+			"label": "Clean and Build GeoBeep",
+			"problemMatcher": [
+				"$flutter"
+			],
+			"type": "shell"
+		}
+	]
+}

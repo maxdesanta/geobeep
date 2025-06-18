@@ -11,9 +11,7 @@ class StorageService {
 
   // Initialize shared preferences
   Future<void> _ensureInitialized() async {
-    if (_prefs == null) {
-      _prefs = await SharedPreferences.getInstance();
-    }
+    _prefs ??= await SharedPreferences.getInstance();
   }
 
   // Save alarm settings

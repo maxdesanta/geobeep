@@ -3,6 +3,8 @@ import 'package:geobeep/models/station_model.dart';
 import 'package:geobeep/providers/station_provider.dart';
 import 'package:geobeep/screen/map.dart';
 import 'package:geobeep/services/auth_service.dart';
+import 'package:geobeep/services/foreground_service.dart';
+import 'package:geobeep/widgets/app_status_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -54,6 +56,11 @@ class _HomePageState extends State<HomePage> {
         ),
         automaticallyImplyLeading: false,
         actions: [
+          // Status indicator
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8.0),
+            child: AppStatusIndicator(),
+          ),
           IconButton(
             icon: Icon(
               Icons.help_outline,
@@ -91,24 +98,25 @@ class _HomePageState extends State<HomePage> {
                     textAlign: TextAlign.center,
                   ),
                   SizedBox(height: 24),
-                    ElevatedButton(
+                  ElevatedButton(
                     onPressed: () {
                       Navigator.pushNamed(context, '/login');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF135E71),
                       padding: EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+                        horizontal: 32,
+                        vertical: 16,
                       ),
                       foregroundColor: Colors.white, // set text color to white
                     ),
                     child: Text(
                       'Login Sekarang',
-                      style: TextStyle(color: Colors.white), // ensure text is white
+                      style: TextStyle(
+                        color: Colors.white,
+                      ), // ensure text is white
                     ),
-                    ),
-                  
+                  ),
                 ],
               ),
             );

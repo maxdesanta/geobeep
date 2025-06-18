@@ -120,8 +120,7 @@ class LocationService {
 
       _isRunning = true;
       debugPrint(
-        'Location tracking started successfully' +
-            (enableBackground ? ' with background updates' : ''),
+        'Location tracking started successfully${enableBackground ? ' with background updates' : ''}',
       );
       return true;
     } catch (e) {

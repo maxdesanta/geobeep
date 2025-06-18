@@ -176,7 +176,7 @@ class _GuideDialogState extends State<GuideDialog>
                       SizedBox(height: 20),
 
                       // Animation
-                      Container(
+                      SizedBox(
                         height: 120,
                         width: 120,
                         child: Lottie.network(

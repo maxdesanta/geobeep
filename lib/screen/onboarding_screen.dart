@@ -94,7 +94,7 @@ class OnboardingScreen extends StatelessWidget {
 
   Widget _buildImage(String assetName) {
     return Center(
-      child: Container(
+      child: SizedBox(
         height: 250,
         width: 250,
         child: Lottie.network(
